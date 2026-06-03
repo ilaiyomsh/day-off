@@ -20,14 +20,14 @@ import {
   parseStatusText,
   formatStatusLabel,
   formatLongText,
-  parseTimeline,
-  formatTimeline,
   parseDateText,
   formatDate,
+  formatNumber,
   parseCheckbox,
   formatCheckbox,
   parseFile,
 } from './columnMap';
+import { workdaysBetween } from '../domain/dates';
 import type { ColumnValues } from './mondayApi';
 import type { VacationColumnMap, TypeValueMap, StatusValueMap, KindValueMap } from '../types';
 import type {
@@ -120,8 +120,9 @@ function mapRequest(ctx: VacationCtx, item: RawItem, get: (id?: string) => RawCo
   const { cols } = ctx;
   const employeeId = parsePeople(get(cols.personColumnId)?.value)[0];
   if (!employeeId) return null;
-  const range = parseTimeline(get(cols.timelineColumnId)?.value);
-  if (!range) return null;
+  const start = parseDateText(get(cols.startDateColumnId)?.text);
+  const end = parseDateText(get(cols.endDateColumnId)?.text);
+  if (!start || !end) return null;
 
   const typeLabel = parseStatusText(get(cols.personalTypeColumnId)?.text);
   const type: AbsenceType = enumFromLabel(ctx.typeValues, TYPE_ORDER, typeLabel) ?? 'vacation';
@@ -133,14 +134,14 @@ function mapRequest(ctx: VacationCtx, item: RawItem, get: (id?: string) => RawCo
   const decidedBy = parsePeople(get(cols.decidedByColumnId)?.value)[0];
   const decidedAt = parseDateText(get(cols.decidedAtColumnId)?.text) ?? undefined;
   const attachment = parseFile(get(cols.fileColumnId)?.value);
-  const submittedAt = createdAtKey(item.created_at) ?? range.from;
+  const submittedAt = createdAtKey(item.created_at) ?? start;
 
   return {
     id: String(item.id),
     employeeId,
     type,
-    start: range.from,
-    end: range.to,
+    start,
+    end,
     status,
     note,
     managerNote,
@@ -153,11 +154,12 @@ function mapRequest(ctx: VacationCtx, item: RawItem, get: (id?: string) => RawCo
 
 function mapCompanyDay(ctx: VacationCtx, item: RawItem, get: (id?: string) => RawColumnValue | undefined): CompanyDay | null {
   const { cols } = ctx;
-  const range = parseTimeline(get(cols.timelineColumnId)?.value);
-  if (!range) return null; // a general day needs a date range
+  const start = parseDateText(get(cols.startDateColumnId)?.text);
+  const end = parseDateText(get(cols.endDateColumnId)?.text);
+  if (!start || !end) return null; // a general day needs a date range
   const mandatory = cols.mandatoryColumnId ? parseCheckbox(get(cols.mandatoryColumnId)?.value) : false;
   const classification = parseStatusText(get(cols.generalTypeColumnId)?.text) || undefined;
-  return { id: String(item.id), name: item.name ?? '', start: range.from, end: range.to, mandatory, classification };
+  return { id: String(item.id), name: item.name ?? '', start, end, mandatory, classification };
 }
 
 /** Read the board once and split items into personal requests + general days. */
@@ -198,11 +200,19 @@ export async function listEntries(ctx: VacationCtx): Promise<{ requests: DayOffR
 // Personal request writes
 // ---------------------------------------------------------------------------
 
+/** Start/end date columns + the app-computed workdays count (shared by both kinds). */
+function dateAndWorkdayColumns(cols: VacationColumnMap, start: DayKey, end: DayKey): ColumnValues {
+  const out: ColumnValues = {};
+  if (cols.startDateColumnId) out[cols.startDateColumnId] = formatDate(start);
+  if (cols.endDateColumnId) out[cols.endDateColumnId] = formatDate(end);
+  if (cols.workdaysColumnId) out[cols.workdaysColumnId] = formatNumber(workdaysBetween(start, end));
+  return out;
+}
+
 function requestDraftColumns(ctx: VacationCtx, draft: RequestDraft): ColumnValues {
   const { cols, typeValues } = ctx;
-  const out: ColumnValues = {};
+  const out: ColumnValues = { ...dateAndWorkdayColumns(cols, draft.start, draft.end) };
   if (cols.personalTypeColumnId) out[cols.personalTypeColumnId] = formatStatusLabel(typeValues[draft.type]);
-  if (cols.timelineColumnId) out[cols.timelineColumnId] = formatTimeline(draft.start, draft.end);
   if (cols.empNoteColumnId) out[cols.empNoteColumnId] = formatLongText(draft.note ?? '');
   return out;
 }
@@ -277,9 +287,8 @@ export async function deleteRequest(id: string): Promise<void> {
 
 function companyDayColumns(ctx: VacationCtx, draft: CompanyDayDraft): ColumnValues {
   const { cols, kindValues } = ctx;
-  const out: ColumnValues = {};
+  const out: ColumnValues = { ...dateAndWorkdayColumns(cols, draft.start, draft.end) };
   if (cols.kindColumnId && kindValues.general) out[cols.kindColumnId] = formatStatusLabel(kindValues.general);
-  if (cols.timelineColumnId) out[cols.timelineColumnId] = formatTimeline(draft.start, draft.end);
   if (cols.mandatoryColumnId) out[cols.mandatoryColumnId] = formatCheckbox(draft.mandatory);
   return out;
 }

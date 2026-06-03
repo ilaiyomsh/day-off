@@ -22,7 +22,9 @@ interface BoardsResponse {
 const COLUMN_FIELDS: { key: keyof VacationColumnMap; labelKey: string }[] = [
   { key: 'kindColumnId', labelKey: 'kind' },
   { key: 'personColumnId', labelKey: 'person' },
-  { key: 'timelineColumnId', labelKey: 'timeline' },
+  { key: 'startDateColumnId', labelKey: 'startDate' },
+  { key: 'endDateColumnId', labelKey: 'endDate' },
+  { key: 'workdaysColumnId', labelKey: 'workdays' },
   { key: 'personalTypeColumnId', labelKey: 'personalType' },
   { key: 'generalTypeColumnId', labelKey: 'generalType' },
   { key: 'approvalStatusColumnId', labelKey: 'approvalStatus' },

@@ -159,6 +159,11 @@ export function formatCheckbox(checked: boolean): unknown {
 // Numbers
 // ---------------------------------------------------------------------------
 
+/** Format a number → numbers-column write value (monday expects a string). */
+export function formatNumber(n: number): unknown {
+  return String(n);
+}
+
 /**
  * Parse a numbers column → number (the column's `text` holds the value).
  * null on empty/non-numeric.

@@ -35,8 +35,12 @@ export interface VacationColumnMap {
   kindColumnId?: string;
   /** People column — the employee a personal entry belongs to. */
   personColumnId?: string;
-  /** Timeline column — the entry's date range. */
-  timelineColumnId?: string;
+  /** Date column — the entry's start day. */
+  startDateColumnId?: string;
+  /** Date column — the entry's end day. */
+  endDateColumnId?: string;
+  /** Numbers column the app fills with the computed number of workdays. */
+  workdaysColumnId?: string;
   /** Status column classifying a PERSONAL entry (vacation / sick / reserves). */
   personalTypeColumnId?: string;
   /** Status column classifying a GENERAL entry (holiday / company day / …, free labels). */

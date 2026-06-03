@@ -388,7 +388,6 @@
     "fields": {
       "kind": "Kind status column (general/personal)",
       "person": "Employee column",
-      "timeline": "Date-range column",
       "personalType": "Personal classification column (vacation/sick/reserves)",
       "generalType": "General classification column (holiday/company day)",
       "approvalStatus": "Approval status column (pending/approved/rejected)",
@@ -397,7 +396,10 @@
       "mgrNote": "Manager note column",
       "decidedBy": "Decided-by column",
       "decidedAt": "Decision date column",
-      "file": "File column"
+      "file": "File column",
+      "startDate": "Start-date column",
+      "endDate": "End-date column",
+      "workdays": "Workdays column (auto-filled)"
     },
     "kindValues": {
       "title": "General/personal values",
