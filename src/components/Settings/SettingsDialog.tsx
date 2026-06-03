@@ -127,9 +127,9 @@ export function SettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 onChange={(e) => setField(key, (e.target.value.trim() || null) as DayOffSettings[typeof key])}
                 style={{ display: 'block', width: '100%', marginTop: 4 }}
               />
-              <small style={{ color: '#676879' }}>{t(`settings.boards.${key}Help`)}</small>
+              <small style={{ color: 'var(--color-text-secondary)' }}>{t(`settings.boards.${key}Help`)}</small>
               {key === 'requestsBoardId' && errors.requestsBoardId && (
-                <span style={{ color: '#d83a52', fontSize: 13, display: 'block' }}>{t(errors.requestsBoardId)}</span>
+                <span style={{ color: 'var(--color-danger)', fontSize: 13, display: 'block' }}>{t(errors.requestsBoardId)}</span>
               )}
             </label>
           ))}
@@ -224,7 +224,7 @@ function MappingTab({
     <div style={{ display: 'grid', gap: 20 }}>
       <section style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.sections.requestColumns')}</h3>
-        {!draft.requestsBoardId && <small style={{ color: '#676879' }}>{t('settings.pickBoardFirst')}</small>}
+        {!draft.requestsBoardId && <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.pickBoardFirst')}</small>}
         {REQUEST_COLUMN_KEYS.map((key) =>
           renderColumnSelect('requestsBoardId', draft.requestsBoardId, key, draft.requestColumns[key]),
         )}
@@ -232,7 +232,7 @@ function MappingTab({
 
       <section style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.sections.companyDayColumns')}</h3>
-        {!draft.companyDaysBoardId && <small style={{ color: '#676879' }}>{t('settings.pickBoardFirst')}</small>}
+        {!draft.companyDaysBoardId && <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.pickBoardFirst')}</small>}
         {COMPANY_COLUMN_KEYS.map((key) =>
           renderColumnSelect('companyDaysBoardId', draft.companyDaysBoardId, key, draft.companyDayColumns[key]),
         )}
@@ -240,7 +240,7 @@ function MappingTab({
 
       <section style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.sections.entitlementColumns')}</h3>
-        {!draft.entitlementsBoardId && <small style={{ color: '#676879' }}>{t('settings.pickBoardFirst')}</small>}
+        {!draft.entitlementsBoardId && <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.pickBoardFirst')}</small>}
         {ENTITLEMENT_COLUMN_KEYS.map((key) =>
           renderColumnSelect('entitlementsBoardId', draft.entitlementsBoardId, key, draft.entitlementColumns[key]),
         )}
@@ -248,7 +248,7 @@ function MappingTab({
 
       <section style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.typeValues.title')}</h3>
-        <small style={{ color: '#676879' }}>{t('settings.typeValues.help')}</small>
+        <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.typeValues.help')}</small>
         {TYPE_KEYS.map((type) => (
           <label key={type} style={{ display: 'block' }}>
             {t(`settings.typeValues.${type}`)}
@@ -266,7 +266,7 @@ function MappingTab({
 
       <section style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.statusValues.title')}</h3>
-        <small style={{ color: '#676879' }}>{t('settings.statusValues.help')}</small>
+        <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.statusValues.help')}</small>
         {STATUS_KEYS.map((status) => (
           <label key={status} style={{ display: 'block' }}>
             {t(`settings.statusValues.${status}`)}
@@ -363,14 +363,14 @@ function TeamTab({
           rows={2}
           style={{ display: 'block', width: '100%', marginTop: 4 }}
         />
-        <small style={{ color: '#676879' }}>{t('settings.team.teamHelp')}</small>
+        <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.team.teamHelp')}</small>
       </label>
 
       <section style={{ display: 'grid', gap: 8 }}>
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.team.managersLabel')}</h3>
-        <small style={{ color: '#676879' }}>{t('settings.team.managersHelp')}</small>
+        <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.team.managersHelp')}</small>
         {draft.team.length === 0 ? (
-          <small style={{ color: '#676879' }}>{t('settings.team.empty')}</small>
+          <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.team.empty')}</small>
         ) : (
           draft.team.map((id) => {
             const user = teamUsers[id];
