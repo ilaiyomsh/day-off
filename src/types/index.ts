@@ -25,54 +25,59 @@ export interface MondayContextValue {
 
 import type { AbsenceType, RequestStatus } from '../domain/types';
 
-/** Column-id mapping for the requests board (one item per absence request). */
-export interface RequestColumnMap {
+/**
+ * Column-id mapping for the single "vacations" board. Every day-off entry —
+ * personal request OR general/company day — is one item on this board; the
+ * `kindColumnId` status discriminates between them.
+ */
+export interface VacationColumnMap {
+  /** Status column whose label separates general (company) from personal entries. */
+  kindColumnId?: string;
+  /** People column — the employee a personal entry belongs to. */
   personColumnId?: string;
-  typeColumnId?: string;
+  /** Timeline column — the entry's date range. */
   timelineColumnId?: string;
-  statusColumnId?: string;
+  /** Status column classifying a PERSONAL entry (vacation / sick / reserves). */
+  personalTypeColumnId?: string;
+  /** Status column classifying a GENERAL entry (holiday / company day / …, free labels). */
+  generalTypeColumnId?: string;
+  /** Status column holding the approval state of a personal request. */
+  approvalStatusColumnId?: string;
   empNoteColumnId?: string;
   mgrNoteColumnId?: string;
   decidedByColumnId?: string;
   decidedAtColumnId?: string;
   fileColumnId?: string;
-}
-
-/** Column-id mapping for the company-days board (item name = holiday name). */
-export interface CompanyDayColumnMap {
-  timelineColumnId?: string;
+  /** Checkbox column — a general/company day is mandatory (office closed). */
   mandatoryColumnId?: string;
 }
 
-/** Column-id mapping for the entitlements board (row per employee × type × year). */
-export interface EntitlementColumnMap {
-  personColumnId?: string;
-  typeColumnId?: string;
-  yearColumnId?: string;
-  entitledColumnId?: string;
+/** Maps each absence type → the label text used by the personal-type status column. */
+export type TypeValueMap = Record<AbsenceType, string>;
+/** Maps each request status → the label text used by the approval status column. */
+export type StatusValueMap = Record<RequestStatus, string>;
+/** The two labels of the kind/discriminator status column. */
+export interface KindValueMap {
+  /** Label that marks an item as a general / company-wide day. */
+  general: string;
+  /** Label that marks an item as a personal day-off request. */
+  personal: string;
 }
 
-/** Maps each absence type → the label text used by the board's Type status column. */
-export type TypeValueMap = Record<AbsenceType, string>;
-/** Maps each request status → the label text used by the board's Status column. */
-export type StatusValueMap = Record<RequestStatus, string>;
-
 /**
- * Day-off settings — custom object app (no reliable context.boardId, so boards +
- * column mappings + team/roles are configured here).
+ * Day-off settings — custom object app (no reliable context.boardId, so the
+ * board + column mappings + team/roles are configured here). All day-off data
+ * lives on ONE board; the kind status column splits general vs personal.
  */
 export interface DayOffSettings {
-  /** Board where day-off requests live (one item per request). */
-  requestsBoardId: string | null;
-  /** Board of company-wide days off / holidays. */
-  companyDaysBoardId: string | null;
-  /** Board of annual entitlements (employee × type × year). */
-  entitlementsBoardId: string | null;
-  requestColumns: RequestColumnMap;
-  companyDayColumns: CompanyDayColumnMap;
-  entitlementColumns: EntitlementColumnMap;
-  /** Type/status enum → board status-column label. Admin maps these in Settings. */
+  /** The single board where every day-off entry (personal + general) lives. */
+  vacationBoardId: string | null;
+  columns: VacationColumnMap;
+  /** Labels in the kind status column that mean general / personal. */
+  kindValues: KindValueMap;
+  /** Personal-type enum → board status label (vacation/sick/reserves). */
   typeValues: TypeValueMap;
+  /** Approval status enum → board status label (pending/approved/rejected). */
   statusValues: StatusValueMap;
   /** Team member monday user IDs shown in the team/dashboard views. */
   team: string[];
@@ -83,12 +88,9 @@ export interface DayOffSettings {
 }
 
 export const DEFAULT_SETTINGS: DayOffSettings = {
-  requestsBoardId: null,
-  companyDaysBoardId: null,
-  entitlementsBoardId: null,
-  requestColumns: {},
-  companyDayColumns: {},
-  entitlementColumns: {},
+  vacationBoardId: null,
+  columns: {},
+  kindValues: { general: '', personal: '' },
   typeValues: { vacation: '', sick: '', reserves: '' },
   statusValues: { pending: '', approved: '', rejected: '' },
   team: [],

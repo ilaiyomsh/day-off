@@ -61,7 +61,8 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit }: Reques
   const overlapHolidays = valid ? companyDays.filter((h) => h.start <= end && h.end >= start) : [];
 
   const bal = valid ? balanceFor(Number(start.slice(0, 4)), currentUser.id, type) : null;
-  const remaining = bal ? bal.entitled - bal.used : null;
+  // Quotas were removed (entitled is always 0) → no remaining/over-balance hints.
+  const remaining = bal && bal.entitled > 0 ? bal.entitled - bal.used : null;
   const overBalance =
     type !== 'sick' && type !== 'reserves' && remaining != null && workdays > remaining;
 

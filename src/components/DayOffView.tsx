@@ -78,7 +78,7 @@ export function DayOffView() {
   const [modal, setModal] = useState<ModalState>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const notConfigured = !settings.requestsBoardId;
+  const notConfigured = !settings.vacationBoardId;
 
   const pendingCount = requests.filter(
     (r) => r.status === 'pending' && r.employeeId !== currentUser.id,

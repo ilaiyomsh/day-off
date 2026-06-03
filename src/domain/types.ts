@@ -41,6 +41,8 @@ export interface CompanyDay {
   name: string;
   /** true = mandatory (office closed); false = optional (רשות). */
   mandatory: boolean;
+  /** Free classification label from the general-type status column (display only). */
+  classification?: string;
 }
 
 /** Annual entitlement for (employee × type × year) = one row on the entitlements board. */

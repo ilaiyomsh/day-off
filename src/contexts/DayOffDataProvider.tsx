@@ -32,21 +32,15 @@ import type {
 import { computeBalance, pendingDaysFor as pendingDaysForDomain, requestYear } from '../domain/absence';
 import { todayKey } from '../domain/dates';
 import {
-  listRequests,
+  listEntries,
   createRequest,
   updateRequest,
   setStatus,
   deleteRequest,
-  type RequestsCtx,
-} from '../services/requestsService';
-import {
-  listCompanyDays,
-  createCompanyDay,
-  updateCompanyDay,
+  saveCompanyDay as saveCompanyDayApi,
   deleteCompanyDay as deleteCompanyDayApi,
-  type CompanyCtx,
-} from '../services/companyDaysService';
-import { listEntitlements, type EntCtx } from '../services/entitlementsService';
+  type VacationCtx,
+} from '../services/vacationService';
 import { resolveUsers } from '../services/usersService';
 
 type ToastVariant = '' | 'success' | 'danger';
@@ -89,6 +83,9 @@ const Ctx = createContext<DayOffData | null>(null);
 
 const TOAST_TTL_MS = 2800;
 
+/** Stable empty entitlements list (yearly quotas were removed). */
+const EMPTY_ENTITLEMENTS: Entitlement[] = [];
+
 /** Minimal Employee fallback when the monday users API can't resolve the signed-in user. */
 function fallbackEmployee(id: string, name: string): Employee {
   const initials = name.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('') || '?';
@@ -104,7 +101,9 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<DayOffRequest[]>([]);
   const [companyDays, setCompanyDays] = useState<CompanyDay[]>([]);
-  const [entitlements, setEntitlements] = useState<Entitlement[]>([]);
+  // Yearly quotas were removed — entitlements is always empty (kept on the
+  // public surface so balance analytics/views compile; entitled resolves to 0).
+  const entitlements: Entitlement[] = EMPTY_ENTITLEMENTS;
   const [team, setTeam] = useState<Employee[]>([]);
   const [currentUser, setCurrentUser] = useState<Employee>(() =>
     fallbackEmployee(String(mondayUser.id ?? 'me'), mondayUser.name ?? ''),
@@ -117,30 +116,17 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
   const [monthDate, setMonthDate] = useState<Date>(() => new Date(today.getFullYear(), today.getMonth(), 1));
   const year = monthDate.getFullYear();
 
-  // ---- service contexts (rebuilt when settings change) ----
-  const requestsCtx = useMemo<RequestsCtx | null>(() => {
-    if (!settings.requestsBoardId) return null;
+  // ---- service context (one board; rebuilt when settings change) ----
+  const vacCtx = useMemo<VacationCtx | null>(() => {
+    if (!settings.vacationBoardId) return null;
     return {
-      boardId: settings.requestsBoardId,
-      cols: settings.requestColumns,
+      boardId: settings.vacationBoardId,
+      cols: settings.columns,
+      kindValues: settings.kindValues,
       typeValues: settings.typeValues,
       statusValues: settings.statusValues,
     };
-  }, [settings.requestsBoardId, settings.requestColumns, settings.typeValues, settings.statusValues]);
-
-  const companyCtx = useMemo<CompanyCtx | null>(() => {
-    if (!settings.companyDaysBoardId) return null;
-    return { boardId: settings.companyDaysBoardId, cols: settings.companyDayColumns };
-  }, [settings.companyDaysBoardId, settings.companyDayColumns]);
-
-  const entCtx = useMemo<EntCtx | null>(() => {
-    if (!settings.entitlementsBoardId) return null;
-    return {
-      boardId: settings.entitlementsBoardId,
-      cols: settings.entitlementColumns,
-      typeValues: settings.typeValues,
-    };
-  }, [settings.entitlementsBoardId, settings.entitlementColumns, settings.typeValues]);
+  }, [settings.vacationBoardId, settings.columns, settings.kindValues, settings.typeValues, settings.statusValues]);
 
   const teamIds = settings.team;
 
@@ -152,34 +138,18 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => setToasts((ts) => ts.filter((x) => x.id !== id)), TOAST_TTL_MS);
   }, []);
 
-  // ---- individual loaders (each guarded) ----
-  const loadRequests = useCallback(async (): Promise<DayOffRequest[]> => {
-    if (!requestsCtx) {
+  // ---- loaders ----
+  // One board read → split into personal requests + general company days.
+  const loadEntries = useCallback(async (): Promise<void> => {
+    if (!vacCtx) {
       setRequests([]);
-      return [];
-    }
-    const data = await listRequests(requestsCtx);
-    setRequests(data);
-    return data;
-  }, [requestsCtx]);
-
-  const loadCompanyDays = useCallback(async () => {
-    if (!companyCtx) {
       setCompanyDays([]);
       return;
     }
-    setCompanyDays(await listCompanyDays(companyCtx));
-  }, [companyCtx]);
-
-  const loadEntitlements = useCallback(async (): Promise<Entitlement[]> => {
-    if (!entCtx) {
-      setEntitlements([]);
-      return [];
-    }
-    const data = await listEntitlements(entCtx);
-    setEntitlements(data);
-    return data;
-  }, [entCtx]);
+    const { requests: reqs, companyDays: days } = await listEntries(vacCtx);
+    setRequests(reqs);
+    setCompanyDays(days);
+  }, [vacCtx]);
 
   const loadTeam = useCallback(async () => {
     if (!teamIds.length) {
@@ -206,9 +176,7 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
       p.catch((err) => handleError(err, { operation: `DayOffData.${op}` }));
 
     void Promise.allSettled([
-      guard('loadRequests', loadRequests()),
-      guard('loadCompanyDays', loadCompanyDays()),
-      guard('loadEntitlements', loadEntitlements()),
+      guard('loadEntries', loadEntries()),
       guard('loadTeam', loadTeam()),
       guard('resolveCurrentUser', resolveCurrentUser()),
     ]).finally(() => {
@@ -218,7 +186,7 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [loadRequests, loadCompanyDays, loadEntitlements, loadTeam, resolveCurrentUser, handleError]);
+  }, [loadEntries, loadTeam, resolveCurrentUser, handleError]);
 
   // ---- derived: lookups + selectable years ----
   const empById = useCallback(
@@ -272,109 +240,105 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
   // ---- mutations: API write -> re-fetch affected list -> toast ----
   const submitRequest = useCallback(
     async (draft: RequestDraft, editingId?: string) => {
-      if (!requestsCtx) return;
+      if (!vacCtx) return;
       try {
         if (editingId) {
-          await updateRequest(requestsCtx, editingId, draft);
+          await updateRequest(vacCtx, editingId, draft);
         } else {
-          await createRequest(requestsCtx, currentUser.id, draft);
+          await createRequest(vacCtx, currentUser.id, draft);
         }
-        await loadRequests();
+        await loadEntries();
         toast(editingId ? t('toasts.requestUpdated') : t('toasts.requestSent'), 'success');
       } catch (err) {
         handleError(err, { operation: 'DayOffData.submitRequest' });
       }
     },
-    [requestsCtx, currentUser.id, loadRequests, toast, t, handleError],
+    [vacCtx, currentUser.id, loadEntries, toast, t, handleError],
   );
 
   const approve = useCallback(
     async (r: DayOffRequest, note?: string) => {
-      if (!requestsCtx) return;
+      if (!vacCtx) return;
       const mn = note && note.trim() ? note.trim() : undefined;
       try {
-        await setStatus(requestsCtx, r.id, 'approved', currentUser.id, todayKey(), mn);
-        await loadRequests();
+        await setStatus(vacCtx, r.id, 'approved', currentUser.id, todayKey(), mn);
+        await loadEntries();
         toast(t('toasts.requestApproved'), 'success');
       } catch (err) {
         handleError(err, { operation: 'DayOffData.approve' });
       }
     },
-    [requestsCtx, currentUser.id, loadRequests, toast, t, handleError],
+    [vacCtx, currentUser.id, loadEntries, toast, t, handleError],
   );
 
   const reject = useCallback(
     async (r: DayOffRequest, reason?: string) => {
-      if (!requestsCtx) return;
+      if (!vacCtx) return;
       const mn = reason && reason.trim() ? reason.trim() : undefined;
       try {
-        await setStatus(requestsCtx, r.id, 'rejected', currentUser.id, todayKey(), mn);
-        await loadRequests();
+        await setStatus(vacCtx, r.id, 'rejected', currentUser.id, todayKey(), mn);
+        await loadEntries();
         toast(t('toasts.requestRejected'), 'danger');
       } catch (err) {
         handleError(err, { operation: 'DayOffData.reject' });
       }
     },
-    [requestsCtx, currentUser.id, loadRequests, toast, t, handleError],
+    [vacCtx, currentUser.id, loadEntries, toast, t, handleError],
   );
 
   const approveAll = useCallback(async () => {
-    if (!requestsCtx) return;
+    if (!vacCtx) return;
     const pend = requests.filter((r) => r.status === 'pending' && r.employeeId !== currentUser.id);
     if (!pend.length) return;
     try {
       for (const r of pend) {
-        await setStatus(requestsCtx, r.id, 'approved', currentUser.id, todayKey());
+        await setStatus(vacCtx, r.id, 'approved', currentUser.id, todayKey());
       }
-      await loadRequests();
+      await loadEntries();
       toast(t('toasts.requestsApproved', { count: pend.length }), 'success');
     } catch (err) {
       handleError(err, { operation: 'DayOffData.approveAll' });
     }
-  }, [requestsCtx, requests, currentUser.id, loadRequests, toast, t, handleError]);
+  }, [vacCtx, requests, currentUser.id, loadEntries, toast, t, handleError]);
 
   const cancelRequest = useCallback(
     async (r: DayOffRequest) => {
       try {
         await deleteRequest(r.id);
-        await loadRequests();
+        await loadEntries();
         toast(t('toasts.requestCancelled'));
       } catch (err) {
         handleError(err, { operation: 'DayOffData.cancelRequest' });
       }
     },
-    [loadRequests, toast, t, handleError],
+    [loadEntries, toast, t, handleError],
   );
 
   const saveCompanyDay = useCallback(
     async (draft: CompanyDayDraft) => {
-      if (!companyCtx) return;
+      if (!vacCtx) return;
       try {
-        if (draft.id) {
-          await updateCompanyDay(companyCtx, draft.id, draft);
-        } else {
-          await createCompanyDay(companyCtx, draft);
-        }
-        await loadCompanyDays();
+        await saveCompanyDayApi(vacCtx, draft);
+        await loadEntries();
         toast(draft.id ? t('toasts.companyDayUpdated') : t('toasts.companyDayAdded'), 'success');
       } catch (err) {
         handleError(err, { operation: 'DayOffData.saveCompanyDay' });
       }
     },
-    [companyCtx, loadCompanyDays, toast, t, handleError],
+    [vacCtx, loadEntries, toast, t, handleError],
   );
 
   const deleteCompanyDay = useCallback(
     async (h: CompanyDay) => {
       try {
         await deleteCompanyDayApi(h.id);
-        await loadCompanyDays();
+        await loadEntries();
         toast(t('toasts.companyDayDeleted'));
       } catch (err) {
         handleError(err, { operation: 'DayOffData.deleteCompanyDay' });
       }
     },
-    [loadCompanyDays, toast, t, handleError],
+    [loadEntries, toast, t, handleError],
   );
 
   const value = useMemo<DayOffData>(

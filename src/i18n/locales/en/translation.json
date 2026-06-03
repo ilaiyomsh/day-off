@@ -322,7 +322,8 @@
       "general": "General",
       "boards": "Boards",
       "mapping": "Column mapping",
-      "team": "Team"
+      "team": "Team",
+      "board": "Board"
     },
     "boards": {
       "requestsBoardId": "Absence requests board",
@@ -353,7 +354,8 @@
     "sections": {
       "requestColumns": "Requests board columns",
       "companyDayColumns": "Company days board columns",
-      "entitlementColumns": "Entitlements board columns"
+      "entitlementColumns": "Entitlements board columns",
+      "columns": "Column mapping"
     },
     "typeValues": {
       "title": "Type value mapping",
@@ -378,7 +380,31 @@
       "empty": "Add user IDs above to mark managers"
     },
     "selectColumn": "Select a column…",
-    "pickBoardFirst": "Pick a board first to load its columns"
+    "pickBoardFirst": "Pick a board first to load its columns",
+    "board": {
+      "label": "Vacations board",
+      "help": "The single board holding every day-off entry — general and personal."
+    },
+    "fields": {
+      "kind": "Kind status column (general/personal)",
+      "person": "Employee column",
+      "timeline": "Date-range column",
+      "personalType": "Personal classification column (vacation/sick/reserves)",
+      "generalType": "General classification column (holiday/company day)",
+      "approvalStatus": "Approval status column (pending/approved/rejected)",
+      "mandatory": "Mandatory column (company day)",
+      "empNote": "Employee note column",
+      "mgrNote": "Manager note column",
+      "decidedBy": "Decided-by column",
+      "decidedAt": "Decision date column",
+      "file": "File column"
+    },
+    "kindValues": {
+      "title": "General/personal values",
+      "help": "The status label separating a general day from a personal one.",
+      "general": "'General' value",
+      "personal": "'Personal' value"
+    }
   },
   "errors": {
     "title": "Something went wrong"

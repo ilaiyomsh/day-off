@@ -26,7 +26,7 @@ export const { SettingsProvider, useSettings } = createSettings<DayOffSettings>(
   defaults: DEFAULT_SETTINGS,
   validate: (s) => {
     const errors: Record<string, string> = {};
-    if (!s.requestsBoardId) errors.requestsBoardId = 'app.notConfigured';
-    return { isValid: Boolean(s.requestsBoardId), errors };
+    if (!s.vacationBoardId) errors.vacationBoardId = 'app.notConfigured';
+    return { isValid: Boolean(s.vacationBoardId), errors };
   },
 });

@@ -2,19 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { DEFAULT_SETTINGS } from '../types';
 
 describe('DEFAULT_SETTINGS', () => {
-  it('starts unconfigured (custom object — boards picked in settings)', () => {
-    expect(DEFAULT_SETTINGS.requestsBoardId).toBeNull();
-    expect(DEFAULT_SETTINGS.companyDaysBoardId).toBeNull();
-    expect(DEFAULT_SETTINGS.entitlementsBoardId).toBeNull();
+  it('starts unconfigured (custom object — the single board is picked in settings)', () => {
+    expect(DEFAULT_SETTINGS.vacationBoardId).toBeNull();
   });
 
-  it('has empty column maps for each board', () => {
-    expect(DEFAULT_SETTINGS.requestColumns).toEqual({});
-    expect(DEFAULT_SETTINGS.companyDayColumns).toEqual({});
-    expect(DEFAULT_SETTINGS.entitlementColumns).toEqual({});
+  it('has an empty column map', () => {
+    expect(DEFAULT_SETTINGS.columns).toEqual({});
   });
 
-  it('seeds blank type/status value maps with every enum key', () => {
+  it('seeds blank kind/type/status value maps with every enum key', () => {
+    expect(DEFAULT_SETTINGS.kindValues).toEqual({ general: '', personal: '' });
     expect(DEFAULT_SETTINGS.typeValues).toEqual({ vacation: '', sick: '', reserves: '' });
     expect(DEFAULT_SETTINGS.statusValues).toEqual({ pending: '', approved: '', rejected: '' });
   });
