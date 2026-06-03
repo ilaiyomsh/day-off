@@ -34,7 +34,7 @@ function myChipsFor(
   const chips: CalChip[] = [];
   if (includeHolidays) {
     holidaysOnKey(dateKey).forEach((h) => {
-      chips.push({ key: 'h' + h.id, kind: 'holiday', label: h.name, color: '', mandatory: h.mandatory, data: h });
+      chips.push({ key: 'h' + h.id, kind: 'holiday', label: h.name, color: '', start: h.start, end: h.end, mandatory: h.mandatory, data: h });
     });
   }
   requests
@@ -46,6 +46,8 @@ function myChipsFor(
         kind: 'absence',
         label: typeLabel(r.type),
         color: meta.color,
+        start: r.start,
+        end: r.end,
         pending: r.status === 'pending',
         data: r,
       });
