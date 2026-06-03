@@ -1,0 +1,386 @@
+{
+  "app": {
+    "title": "Days off",
+    "brandSub": "Day Off · vacations & holidays management",
+    "notConfigured": "Running as a Custom Object — pick a board in Settings",
+    "ready": "Ready",
+    "managerView": "Manager view",
+    "employeeView": "Employee view"
+  },
+  "tabs": {
+    "mine": "My absences",
+    "team": "Team board",
+    "dashboard": "Dashboard",
+    "approvals": "Approvals",
+    "company": "Company days"
+  },
+  "types": {
+    "vacation": "Vacation",
+    "sick": "Sick",
+    "reserves": "Reserves"
+  },
+  "status": {
+    "pending": "Pending approval",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  },
+  "rel": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "inDays": "In {{count}} days",
+    "agoDays": "{{count}} days ago"
+  },
+  "common": {
+    "close": "Close",
+    "dismiss": "Dismiss",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "back": "Back",
+    "export": "Export",
+    "import": "Import",
+    "add": "Add",
+    "remove": "Remove",
+    "workdays_one": "1 workday",
+    "workdays_other": "{{count}} workdays",
+    "days_one": "1 day",
+    "days_other": "{{count}} days",
+    "calDays_one": "1 calendar day",
+    "calDays_other": "{{count}} calendar days",
+    "document": "Document",
+    "attachedDocument": "Attached document",
+    "more": "+{{count}} more",
+    "all": "All",
+    "allTeam": "All team",
+    "datePrefix": "",
+    "geresh": ""
+  },
+  "months": [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ],
+  "monthsShort": [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec"
+  ],
+  "days": [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday"
+  ],
+  "daysShort": [
+    "Sun",
+    "Mon",
+    "Tue",
+    "Wed",
+    "Thu",
+    "Fri",
+    "Sat"
+  ],
+  "calendar": {
+    "today": "Today",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "addTitle": "Add",
+    "holidayTitle": "Company day / holiday: {{name}}"
+  },
+  "views": {
+    "mine": {
+      "title": "My absences",
+      "sub": "Your {{year}} balances and absence requests",
+      "newRequest": "New request",
+      "balancesTitle": "{{year}} balances",
+      "requestsTitle": "{{year}} requests",
+      "emptyTitle": "No absences in {{year}}",
+      "emptySub": "Add a request to plan a vacation"
+    },
+    "team": {
+      "title": "Team board",
+      "offToday_one": "1 team member off today",
+      "offToday_other": "{{count}} team members off today",
+      "allPresent": "Everyone is present today",
+      "teamCount_one": "1 team member",
+      "teamCount_other": "{{count}} team members",
+      "barTitle": "{{name}} · {{type}} · {{status}}"
+    },
+    "approvals": {
+      "title": "Approvals",
+      "pendingCount_one": "1 request awaiting action",
+      "pendingCount_other": "{{count}} requests awaiting action",
+      "noPending": "No pending requests",
+      "approveAll": "Approve all",
+      "submitted": "Submitted {{rel}}",
+      "balance": "Balance: {{count}} days",
+      "emptyTitle": "All handled",
+      "emptySub": "No absence requests awaiting approval",
+      "recentTitle": "Recently handled",
+      "scopeNote": "Approval permissions (who approves whom) will be defined in the full version — in the prototype all requests are shown together."
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "sub": "Team absence breakdown for {{year}} · {{count}} team members",
+      "filterType": "Type",
+      "filterEmployee": "Employee",
+      "kpiTotal": "Total absence days",
+      "kpiTotalUnit": "days",
+      "kpiApproved": "{{count}} approved",
+      "kpiPending": "{{count}} pending",
+      "kpiOffToday": "Off today",
+      "kpiAllPresent": "Everyone present",
+      "kpiPendingApproval": "Awaiting approval",
+      "kpiPendingDays": "{{count}} days pending",
+      "kpiNoOpen": "No open requests",
+      "kpiUtil": "Average {{type}} utilization",
+      "kpiUtilUnit": "%",
+      "kpiUtilFoot": "Average annual quota · {{year}}",
+      "byTimeTitle": "Breakdown by time",
+      "byTimeSub": "Absence days across the year · click to open the requests",
+      "byTimeEmptyTitle": "No data for this year",
+      "byTimeEmptySub": "No absences found for the current filter",
+      "byEmpTitle": "Breakdown by employee",
+      "byEmpSub": "Total absence days · click to open the requests",
+      "byEmpEmptyTitle": "No absences",
+      "byEmpEmptySub": "No data found for the current filter",
+      "utilTitle": "Utilization vs. quota",
+      "utilSub": "Annual {{type}} quota · who's near full and who hasn't used theirs",
+      "utilFig": "{{used}} / {{entitled}} days",
+      "utilRemaining": "{{count}} remaining",
+      "utilNearMax": "Near full",
+      "utilLow": "Low utilization",
+      "utilEmptyTitle": "No annual quota",
+      "utilEmptySub": "Type \"{{type}}\" has no defined annual quota",
+      "legendPending": "Pending approval",
+      "grouping": {
+        "months": "Months",
+        "quarters": "Quarters"
+      },
+      "quarter": "Q{{count}}",
+      "barTitleTotal": "{{label}}: {{count}} days",
+      "barTypeLine": "{{type}} {{count}}",
+      "barTypePending": "{{type}} {{count}} ({{pending}} pending)",
+      "kpiApprovedLabel": "approved",
+      "kpiPendingLabel": "pending",
+      "kpiPendingDaysLabel": "pending days"
+    },
+    "company": {
+      "title": "Company days & holidays",
+      "sub_one": "1 record defined for {{year}} · {{mandatory}} mandatory days",
+      "sub_other": "{{count}} records defined for {{year}} · {{mandatory}} mandatory days",
+      "addDay": "Add day",
+      "colName": "Name",
+      "colDates": "Dates",
+      "colDays": "Days",
+      "colKind": "Classification",
+      "colEdit": "Edit",
+      "emptyTitle": "No company days for {{year}}",
+      "emptySub": "Add a holiday or company day"
+    }
+  },
+  "groups": {
+    "pending": "Awaiting approval",
+    "approved": "Approved",
+    "rejected": "Rejected"
+  },
+  "balance": {
+    "of": "of {{count}} days",
+    "daysThisYear": "days this year",
+    "used": "Used",
+    "pending": "Pending",
+    "remaining": "Remaining",
+    "noQuota": "No annual quota",
+    "miniDays": "days",
+    "miniPending": "{{count}} pending"
+  },
+  "request": {
+    "newTitle": "New absence request",
+    "editTitle": "Edit absence request",
+    "sub": "{{name}} · the request will be sent for manager approval",
+    "submit": "Submit request",
+    "typeLabel": "Absence type",
+    "fromLabel": "From date",
+    "toLabel": "To date",
+    "summaryWorkdays": "workdays",
+    "summaryCalDays": "({{count}} calendar days)",
+    "summaryRemaining": "Balance after approval:",
+    "summaryRemainingDays": "days",
+    "overBalance": "The request exceeds your {{type}} balance ({{count}} days). You may still submit — the manager will decide.",
+    "overlapHolidays": "The range includes company days: {{names}}. These days usually don't count against the quota.",
+    "noteLabel": "Note to manager",
+    "notePlaceholder": "Anything you write here will be shown to the approving manager — reason, details or a link to a document…",
+    "noteHint": "This note is written by you, the employee. The manager can add their own note upon approval.",
+    "fileLabel": "Attach document",
+    "fileOptional": "(optional)",
+    "filePick": "Choose a file from your computer",
+    "required": "*",
+    "docHint": {
+      "vacation": "Supporting document",
+      "sick": "Doctor's note",
+      "reserves": "Order 8 / Form 3010"
+    }
+  },
+  "detail": {
+    "cancelRequest": "Cancel request",
+    "editRequest": "Edit request",
+    "rowType": "Type",
+    "rowDates": "Dates",
+    "rowDuration": "Duration",
+    "rowSubmitted": "Submitted",
+    "rowDocument": "Document",
+    "decidedByApproved": "Approved by",
+    "decidedByRejected": "Rejected by",
+    "employeeNote": "Employee note",
+    "managerNote": "Manager note",
+    "employeeNoteEmpty": "No note from the employee",
+    "managerNotePending": "Will be written upon approval / rejection",
+    "managerNoteEmpty": "No note from the manager",
+    "reject": "Reject",
+    "approve": "Approve"
+  },
+  "approve": {
+    "title": "Approve request",
+    "confirm": "Approve request",
+    "noteLabel": "Manager note",
+    "noteOptional": "(optional)",
+    "notePlaceholder": "Instructions before leaving, wishes or relevant info for the employee…",
+    "noteHint": "This note will be shown to the employee alongside the approval.",
+    "approveAction": "Approve",
+    "rejectAction": "Reject"
+  },
+  "reject": {
+    "title": "Reject request",
+    "confirm": "Reject request",
+    "noteLabel": "Manager note · rejection reason",
+    "notePlaceholder": "The explanation will be shown to the employee…",
+    "noteHint": "This note is written by you, the manager, and will be shown in the request details."
+  },
+  "companyDay": {
+    "addTitle": "Add a general day off",
+    "editTitle": "Edit company day",
+    "sub": "Applies to all employees on the team board",
+    "delete": "Delete",
+    "nameLabel": "Day name",
+    "namePlaceholder": "e.g. Sukkot, Passover, team day…",
+    "fromLabel": "From date",
+    "toLabel": "To date",
+    "mandatoryLabel": "Mandatory day",
+    "mandatoryHint": "Office closed — everyone is off",
+    "optionalHint": "Optional — employees may choose to work",
+    "mandatory": "Mandatory",
+    "optional": "Optional",
+    "dayUnit": "day",
+    "daysUnit": "days"
+  },
+  "drill": {
+    "requestsCount_one": "1 absence request",
+    "requestsCount_other": "{{count}} absence requests",
+    "emptyTitle": "No absences",
+    "emptySub": "No records found for this filter"
+  },
+  "toasts": {
+    "requestUpdated": "The request was updated and sent for approval",
+    "requestSent": "The request was sent for manager approval",
+    "requestApproved": "The request was approved",
+    "requestRejected": "The request was rejected",
+    "requestsApproved_one": "1 request approved",
+    "requestsApproved_other": "{{count}} requests approved",
+    "requestCancelled": "The request was cancelled",
+    "companyDayUpdated": "The company day was updated",
+    "companyDayAdded": "The company day was added",
+    "companyDayDeleted": "The company day was deleted"
+  },
+  "settings": {
+    "title": "Settings",
+    "open": "Settings",
+    "boardId": "Board ID",
+    "fixErrors": "Fix the highlighted fields",
+    "tabs": {
+      "general": "General",
+      "boards": "Boards",
+      "mapping": "Column mapping",
+      "team": "Team"
+    },
+    "boards": {
+      "requestsBoardId": "Absence requests board",
+      "requestsBoardIdHelp": "The board where one record per absence request is stored.",
+      "companyDaysBoardId": "Company days & holidays board",
+      "companyDaysBoardIdHelp": "The board of company-wide days off and holidays.",
+      "entitlementsBoardId": "Annual entitlements board",
+      "entitlementsBoardIdHelp": "The board of annual entitlements (employee × type × year)."
+    },
+    "columns": {
+      "dateColumnId": "Date column",
+      "typeColumnId": "Type column",
+      "personColumnId": "Person column",
+      "timelineColumnId": "Timeline column",
+      "statusColumnId": "Status column",
+      "empNoteColumnId": "Employee note column",
+      "mgrNoteColumnId": "Manager note column",
+      "decidedByColumnId": "Decided-by column",
+      "decidedAtColumnId": "Decision date column",
+      "fileColumnId": "File column",
+      "companyTimelineColumnId": "Timeline column",
+      "mandatoryColumnId": "Mandatory-day column",
+      "entPersonColumnId": "Person column",
+      "entTypeColumnId": "Type column",
+      "entYearColumnId": "Year column",
+      "entitledColumnId": "Entitlement column"
+    },
+    "sections": {
+      "requestColumns": "Requests board columns",
+      "companyDayColumns": "Company days board columns",
+      "entitlementColumns": "Entitlements board columns"
+    },
+    "typeValues": {
+      "title": "Type value mapping",
+      "help": "The board status-column label for each absence type.",
+      "vacation": "Vacation value",
+      "sick": "Sick value",
+      "reserves": "Reserves value"
+    },
+    "statusValues": {
+      "title": "Status value mapping",
+      "help": "The board status-column label for each request state.",
+      "pending": "Pending value",
+      "approved": "Approved value",
+      "rejected": "Rejected value"
+    },
+    "team": {
+      "title": "Team",
+      "teamLabel": "Team members",
+      "teamHelp": "monday users shown in the team board and dashboard.",
+      "managersLabel": "Managers",
+      "managersHelp": "A subset of the team allowed to approve requests and see the manager tabs.",
+      "empty": "Add user IDs above to mark managers"
+    },
+    "selectColumn": "Select a column…",
+    "pickBoardFirst": "Pick a board first to load its columns"
+  },
+  "errors": {
+    "title": "Something went wrong"
+  }
+}

@@ -1,0 +1,193 @@
+import { describe, it, expect } from 'vitest';
+import {
+  toKey,
+  fromKey,
+  addDays,
+  isWeekend,
+  sameDay,
+  eachDay,
+  workdaysBetween,
+  calDaysBetween,
+  buildMonthMatrix,
+  fmtDate,
+  fmtDateLong,
+  fmtRange,
+  relDays,
+  type MonthDayNames,
+  type RelDayLabels,
+} from '../domain/dates';
+
+// Stub names — language-agnostic so assertions hold under any TZ / locale.
+const names: MonthDayNames = {
+  months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  monthsShort: ['Ja', 'Fe', 'Ma', 'Ap', 'My', 'Jn', 'Jl', 'Au', 'Se', 'Oc', 'No', 'De'],
+  days: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+  daysShort: ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'],
+  inPrefix: 'ב',
+  geresh: '׳',
+};
+
+const relLabels: RelDayLabels = {
+  today: 'today',
+  tomorrow: 'tomorrow',
+  yesterday: 'yesterday',
+  inDays: (n) => `in ${n}`,
+  agoDays: (n) => `ago ${n}`,
+};
+
+describe('toKey / fromKey round-trip', () => {
+  it('round-trips a day-key through fromKey/toKey unchanged', () => {
+    for (const k of ['2026-01-01', '2026-06-03', '2026-12-31', '2024-02-29']) {
+      expect(toKey(fromKey(k))).toBe(k);
+    }
+  });
+
+  it('builds a local-midnight key regardless of TZ', () => {
+    // fromKey uses local-calendar construction, so the key never shifts a day.
+    expect(toKey(fromKey('2026-03-15'))).toBe('2026-03-15');
+  });
+});
+
+describe('isWeekend (Israel: Fri=5, Sat=6)', () => {
+  it('flags Friday and Saturday as weekend, others as workdays', () => {
+    // 2026-06-05 is a Friday, 2026-06-06 a Saturday, 2026-06-07 a Sunday.
+    expect(isWeekend(fromKey('2026-06-05'))).toBe(true); // Fri
+    expect(isWeekend(fromKey('2026-06-06'))).toBe(true); // Sat
+    expect(isWeekend(fromKey('2026-06-07'))).toBe(false); // Sun
+    expect(isWeekend(fromKey('2026-06-04'))).toBe(false); // Thu
+  });
+});
+
+describe('addDays / sameDay', () => {
+  it('advances and rewinds days', () => {
+    expect(toKey(addDays(fromKey('2026-06-03'), 1))).toBe('2026-06-04');
+    expect(toKey(addDays(fromKey('2026-06-03'), -3))).toBe('2026-05-31');
+    expect(toKey(addDays(fromKey('2026-12-31'), 1))).toBe('2027-01-01');
+  });
+
+  it('sameDay compares calendar day only', () => {
+    const a = fromKey('2026-06-03');
+    const b = addDays(a, 0);
+    expect(sameDay(a, b)).toBe(true);
+    expect(sameDay(a, addDays(a, 1))).toBe(false);
+  });
+});
+
+describe('eachDay', () => {
+  it('returns inclusive list of keys', () => {
+    expect(eachDay('2026-06-03', '2026-06-06')).toEqual([
+      '2026-06-03',
+      '2026-06-04',
+      '2026-06-05',
+      '2026-06-06',
+    ]);
+  });
+
+  it('returns single key for same start/end', () => {
+    expect(eachDay('2026-06-03', '2026-06-03')).toEqual(['2026-06-03']);
+  });
+
+  it('spans month and year boundaries', () => {
+    expect(eachDay('2026-12-30', '2027-01-02')).toEqual([
+      '2026-12-30',
+      '2026-12-31',
+      '2027-01-01',
+      '2027-01-02',
+    ]);
+  });
+});
+
+describe('workdaysBetween (excludes Fri/Sat)', () => {
+  it('counts only workdays in a week spanning the weekend', () => {
+    // Sun 2026-05-31 .. Sat 2026-06-06: workdays Sun,Mon,Tue,Wed,Thu = 5; Fri+Sat excluded.
+    expect(workdaysBetween('2026-05-31', '2026-06-06')).toBe(5);
+  });
+
+  it('is zero for a Fri-Sat-only range', () => {
+    expect(workdaysBetween('2026-06-05', '2026-06-06')).toBe(0);
+  });
+
+  it('counts a single workday as 1', () => {
+    expect(workdaysBetween('2026-06-03', '2026-06-03')).toBe(1); // Wed
+  });
+
+  it('counts a single weekend day as 0', () => {
+    expect(workdaysBetween('2026-06-05', '2026-06-05')).toBe(0); // Fri
+  });
+});
+
+describe('calDaysBetween (calendar days, inclusive)', () => {
+  it('counts every day including weekends', () => {
+    expect(calDaysBetween('2026-05-31', '2026-06-06')).toBe(7);
+    expect(calDaysBetween('2026-06-03', '2026-06-03')).toBe(1);
+  });
+});
+
+describe('buildMonthMatrix', () => {
+  it('returns a 6x7 matrix starting on a Sunday', () => {
+    const m = buildMonthMatrix(new Date(2026, 5, 1)); // June 2026
+    expect(m).toHaveLength(6);
+    for (const week of m) expect(week).toHaveLength(7);
+    // First cell must be a Sunday (getDay() === 0).
+    expect(m[0][0].getDay()).toBe(0);
+    // Cells are contiguous days.
+    expect(toKey(addDays(m[0][0], 1))).toBe(toKey(m[0][1]));
+    // Last cell is 41 days after the first.
+    expect(toKey(m[5][6])).toBe(toKey(addDays(m[0][0], 41)));
+  });
+
+  it('includes the first of the month somewhere in the matrix', () => {
+    const m = buildMonthMatrix(new Date(2026, 5, 1));
+    const keys = m.flat().map(toKey);
+    expect(keys).toContain('2026-06-01');
+  });
+});
+
+describe('fmtRange', () => {
+  it('same-day → single long date', () => {
+    expect(fmtRange('2026-06-03', '2026-06-03', names)).toBe('3 בJun 2026');
+  });
+
+  it('same-month → condensed day–day', () => {
+    expect(fmtRange('2026-06-03', '2026-06-07', names)).toBe('3–7 בJun 2026');
+  });
+
+  it('same-year cross-month → short months', () => {
+    expect(fmtRange('2026-06-28', '2026-07-02', names)).toBe('28 בJn – 2 בJl 2026');
+  });
+
+  it('cross-year → full with both years', () => {
+    expect(fmtRange('2026-12-30', '2027-01-02', names)).toBe('30 De׳ 2026 – 2 Ja׳ 2027');
+  });
+});
+
+describe('fmtDate / fmtDateLong', () => {
+  it('fmtDate is day + short month', () => {
+    expect(fmtDate('2026-06-03', names)).toBe('3 Jn׳');
+  });
+
+  it('fmtDateLong is day-name + long date', () => {
+    // 2026-06-03 is a Wednesday → days[3] = 'Wed'.
+    expect(fmtDateLong('2026-06-03', names)).toBe('Wed, 3 בJun 2026');
+  });
+});
+
+describe('relDays (with stub labels, pinned today)', () => {
+  const today = fromKey('2026-06-03');
+
+  it('returns today/tomorrow/yesterday', () => {
+    expect(relDays('2026-06-03', relLabels, today)).toBe('today');
+    expect(relDays('2026-06-04', relLabels, today)).toBe('tomorrow');
+    expect(relDays('2026-06-02', relLabels, today)).toBe('yesterday');
+  });
+
+  it('returns in-N / ago-N for larger gaps', () => {
+    expect(relDays('2026-06-08', relLabels, today)).toBe('in 5');
+    expect(relDays('2026-05-29', relLabels, today)).toBe('ago 5');
+  });
+
+  it('is stable across the DST-style boundaries (uses 86400000 rounding)', () => {
+    // Spanning a month boundary still yields exact day deltas.
+    expect(relDays('2026-07-03', relLabels, today)).toBe('in 30');
+  });
+});

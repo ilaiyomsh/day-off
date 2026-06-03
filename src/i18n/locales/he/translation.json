@@ -1,0 +1,386 @@
+{
+  "app": {
+    "title": "ימי היעדרות",
+    "brandSub": "Day Off · ניהול חופשות וחגים",
+    "notConfigured": "האפליקציה רצה כ-Custom Object — יש לבחור לוח בהגדרות",
+    "ready": "מוכן",
+    "managerView": "תצוגת מנהל",
+    "employeeView": "תצוגת עובד"
+  },
+  "tabs": {
+    "mine": "ההיעדרויות שלי",
+    "team": "לוח צוות",
+    "dashboard": "דשבורד",
+    "approvals": "אישורים",
+    "company": "ימי חברה"
+  },
+  "types": {
+    "vacation": "חופשה",
+    "sick": "מחלה",
+    "reserves": "מילואים"
+  },
+  "status": {
+    "pending": "ממתין לאישור",
+    "approved": "מאושר",
+    "rejected": "נדחה"
+  },
+  "rel": {
+    "today": "היום",
+    "tomorrow": "מחר",
+    "yesterday": "אתמול",
+    "inDays": "בעוד {{count}} ימים",
+    "agoDays": "לפני {{count}} ימים"
+  },
+  "common": {
+    "close": "סגירה",
+    "dismiss": "סגירה",
+    "loading": "טוען…",
+    "save": "שמירה",
+    "cancel": "ביטול",
+    "back": "חזרה",
+    "export": "ייצוא",
+    "import": "ייבוא",
+    "add": "הוספה",
+    "remove": "הסרה",
+    "workdays_one": "יום עבודה אחד",
+    "workdays_other": "{{count}} ימי עבודה",
+    "days_one": "יום",
+    "days_other": "{{count}} ימים",
+    "calDays_one": "יום קלנדרי",
+    "calDays_other": "{{count}} ימים קלנדריים",
+    "document": "מסמך",
+    "attachedDocument": "מסמך מצורף",
+    "more": "+{{count}} עוד",
+    "all": "הכל",
+    "allTeam": "כל הצוות",
+    "datePrefix": "ב",
+    "geresh": "׳"
+  },
+  "months": [
+    "ינואר",
+    "פברואר",
+    "מרץ",
+    "אפריל",
+    "מאי",
+    "יוני",
+    "יולי",
+    "אוגוסט",
+    "ספטמבר",
+    "אוקטובר",
+    "נובמבר",
+    "דצמבר"
+  ],
+  "monthsShort": [
+    "ינו׳",
+    "פבר׳",
+    "מרץ",
+    "אפר׳",
+    "מאי",
+    "יוני",
+    "יולי",
+    "אוג׳",
+    "ספט׳",
+    "אוק׳",
+    "נוב׳",
+    "דצמ׳"
+  ],
+  "days": [
+    "ראשון",
+    "שני",
+    "שלישי",
+    "רביעי",
+    "חמישי",
+    "שישי",
+    "שבת"
+  ],
+  "daysShort": [
+    "א׳",
+    "ב׳",
+    "ג׳",
+    "ד׳",
+    "ה׳",
+    "ו׳",
+    "ש׳"
+  ],
+  "calendar": {
+    "today": "היום",
+    "prevMonth": "חודש קודם",
+    "nextMonth": "חודש הבא",
+    "addTitle": "הוספה",
+    "holidayTitle": "יום חברה / חג: {{name}}"
+  },
+  "views": {
+    "mine": {
+      "title": "ההיעדרויות שלי",
+      "sub": "המכסות שלך לשנת {{year}} ובקשות ההיעדרות",
+      "newRequest": "בקשת היעדרות",
+      "balancesTitle": "יתרות {{year}}",
+      "requestsTitle": "בקשות {{year}}",
+      "emptyTitle": "אין היעדרויות בשנת {{year}}",
+      "emptySub": "הוסף בקשה כדי לתכנן חופשה"
+    },
+    "team": {
+      "title": "לוח צוות",
+      "offToday_one": "איש צוות אחד בחופש היום",
+      "offToday_other": "{{count}} אנשי צוות בחופש היום",
+      "allPresent": "כל הצוות נוכח היום",
+      "teamCount_one": "איש צוות אחד",
+      "teamCount_other": "{{count}} אנשי צוות",
+      "barTitle": "{{name}} · {{type}} · {{status}}"
+    },
+    "approvals": {
+      "title": "אישורים",
+      "pendingCount_one": "בקשה אחת ממתינה לטיפול",
+      "pendingCount_other": "{{count}} בקשות ממתינות לטיפול",
+      "noPending": "אין בקשות ממתינות",
+      "approveAll": "אישור הכל",
+      "submitted": "הוגש {{rel}}",
+      "balance": "יתרה: {{count}} ימים",
+      "emptyTitle": "הכול מטופל",
+      "emptySub": "אין בקשות היעדרות שממתינות לאישור",
+      "recentTitle": "טופלו לאחרונה",
+      "scopeNote": "הרשאות אישור (מי מאשר למי) יוגדרו בגרסה המלאה — בפרוטוטייפ כל הבקשות מוצגות יחד."
+    },
+    "dashboard": {
+      "title": "דשבורד",
+      "sub": "פילוח היעדרויות הצוות לשנת {{year}} · {{count}} אנשי צוות",
+      "filterType": "סוג",
+      "filterEmployee": "עובד",
+      "kpiTotal": "סה״כ ימי היעדרות",
+      "kpiTotalUnit": "ימים",
+      "kpiApproved": "{{count}} מאושרים",
+      "kpiPending": "{{count}} ממתינים",
+      "kpiOffToday": "נעדרים היום",
+      "kpiAllPresent": "כל הצוות נוכח",
+      "kpiPendingApproval": "ממתינים לאישור",
+      "kpiPendingDays": "{{count}} ימים ממתינים",
+      "kpiNoOpen": "אין בקשות פתוחות",
+      "kpiUtil": "ניצול {{type}} ממוצע",
+      "kpiUtilUnit": "%",
+      "kpiUtilFoot": "ממוצע מכסה שנתית · {{year}}",
+      "byTimeTitle": "פילוח לפי זמן",
+      "byTimeSub": "ימי היעדרות לאורך השנה · לחיצה פותחת את הבקשות",
+      "byTimeEmptyTitle": "אין נתונים לשנה זו",
+      "byTimeEmptySub": "לא נמצאו היעדרויות לסינון הנוכחי",
+      "byEmpTitle": "פילוח לפי עובד",
+      "byEmpSub": "סה״כ ימי היעדרות · לחיצה פותחת את הבקשות",
+      "byEmpEmptyTitle": "אין היעדרויות",
+      "byEmpEmptySub": "לא נמצאו נתונים לסינון הנוכחי",
+      "utilTitle": "ניצול מול מכסה",
+      "utilSub": "מכסת {{type}} שנתית · מי קרוב למיצוי ומי טרם ניצל",
+      "utilFig": "{{used}} / {{entitled}} ימים",
+      "utilRemaining": "{{count}} נותרו",
+      "utilNearMax": "קרוב למיצוי",
+      "utilLow": "ניצול נמוך",
+      "utilEmptyTitle": "אין מכסה שנתית",
+      "utilEmptySub": "לסוג \"{{type}}\" אין מכסה שנתית מוגדרת",
+      "legendPending": "ממתין לאישור",
+      "grouping": {
+        "months": "חודשים",
+        "quarters": "רבעונים"
+      },
+      "quarter": "רבעון {{count}}",
+      "barTitleTotal": "{{label}}: {{count}} ימים",
+      "barTypeLine": "{{type}} {{count}}",
+      "barTypePending": "{{type}} {{count}} ({{pending}} ממתינים)",
+      "kpiApprovedLabel": "מאושרים",
+      "kpiPendingLabel": "ממתינים",
+      "kpiPendingDaysLabel": "ימים ממתינים"
+    },
+    "company": {
+      "title": "ימי חברה וחגים",
+      "sub_one": "רשומה אחת מוגדרת לשנת {{year}} · {{mandatory}} ימי חובה",
+      "sub_other": "{{count}} רשומות מוגדרות לשנת {{year}} · {{mandatory}} ימי חובה",
+      "addDay": "הוספת יום",
+      "colName": "שם",
+      "colDates": "תאריכים",
+      "colDays": "ימים",
+      "colKind": "סיווג",
+      "colEdit": "עריכה",
+      "emptyTitle": "אין ימי חברה לשנת {{year}}",
+      "emptySub": "הוסף חג או יום חברה"
+    }
+  },
+  "groups": {
+    "pending": "ממתינות לאישור",
+    "approved": "מאושרות",
+    "rejected": "נדחו"
+  },
+  "balance": {
+    "of": "מתוך {{count}} ימים",
+    "daysThisYear": "ימים השנה",
+    "used": "נוצלו",
+    "pending": "ממתינים",
+    "remaining": "נותרו",
+    "noQuota": "ללא מכסה שנתית",
+    "miniDays": "ימים",
+    "miniPending": "{{count}} ממתינים"
+  },
+  "request": {
+    "newTitle": "בקשת היעדרות חדשה",
+    "editTitle": "עריכת בקשת היעדרות",
+    "sub": "{{name}} · הבקשה תישלח לאישור מנהל",
+    "submit": "שליחת בקשה",
+    "typeLabel": "סוג היעדרות",
+    "fromLabel": "מתאריך",
+    "toLabel": "עד תאריך",
+    "summaryWorkdays": "ימי עבודה",
+    "summaryCalDays": "({{count}} ימים קלנדריים)",
+    "summaryRemaining": "יתרה לאחר אישור:",
+    "summaryRemainingDays": "ימים",
+    "overBalance": "הבקשה חורגת מיתרת ה{{type}} שלך ({{count}} ימים). ניתן לשלוח — המנהל יחליט.",
+    "overlapHolidays": "הטווח כולל ימי חברה: {{names}}. ימים אלה לרוב אינם נספרים מהמכסה.",
+    "noteLabel": "הערה למנהל",
+    "notePlaceholder": "מה שתכתבו כאן יוצג למנהל המאשר — סיבה, פרטים או קישור לאישור…",
+    "noteHint": "הערה זו נכתבת על־ידך, העובד/ת. המנהל יוכל להוסיף הערה משלו בעת האישור.",
+    "fileLabel": "צירוף מסמך",
+    "fileOptional": "(לא חובה)",
+    "filePick": "בחירת קובץ מהמחשב",
+    "required": "*",
+    "docHint": {
+      "vacation": "מסמך תומך",
+      "sick": "אישור רופא",
+      "reserves": "צו 8 / טופס 3010"
+    }
+  },
+  "detail": {
+    "cancelRequest": "ביטול הבקשה",
+    "editRequest": "עריכת הבקשה",
+    "rowType": "סוג",
+    "rowDates": "תאריכים",
+    "rowDuration": "משך",
+    "rowSubmitted": "הוגש",
+    "rowDocument": "מסמך",
+    "decidedByApproved": "אושר ע״י",
+    "decidedByRejected": "נדחה ע״י",
+    "employeeNote": "הערת העובד/ת",
+    "managerNote": "הערת המנהל",
+    "employeeNoteEmpty": "לא צורפה הערה מהעובד/ת",
+    "managerNotePending": "תיכתב בעת האישור / הדחייה",
+    "managerNoteEmpty": "לא צורפה הערה מהמנהל",
+    "reject": "דחייה",
+    "approve": "אישור"
+  },
+  "approve": {
+    "title": "אישור בקשה",
+    "confirm": "אישור הבקשה",
+    "noteLabel": "הערת המנהל",
+    "noteOptional": "(לא חובה)",
+    "notePlaceholder": "הנחיות לפני היציאה, איחולים או מידע רלוונטי לעובד/ת…",
+    "noteHint": "הערה זו תוצג לעובד/ת לצד האישור.",
+    "approveAction": "אישור",
+    "rejectAction": "דחייה"
+  },
+  "reject": {
+    "title": "דחיית בקשה",
+    "confirm": "דחיית הבקשה",
+    "noteLabel": "הערת המנהל · נימוק הדחייה",
+    "notePlaceholder": "ההסבר יוצג לעובד/ת…",
+    "noteHint": "הערה זו נכתבת על‑ידך, המנהל, ותוצג בפרטי הבקשה."
+  },
+  "companyDay": {
+    "addTitle": "הוספת יום חופש כללי",
+    "editTitle": "עריכת יום חברה",
+    "sub": "יחול על כל העובדים בלוח הצוות",
+    "delete": "מחיקה",
+    "nameLabel": "שם היום",
+    "namePlaceholder": "למשל: סוכות, פסח, יום גיבוש…",
+    "fromLabel": "מתאריך",
+    "toLabel": "עד תאריך",
+    "mandatoryLabel": "יום חובה",
+    "mandatoryHint": "סגירת משרד — כולם בחופש",
+    "optionalHint": "רשות — העובד יכול לבחור לעבוד",
+    "mandatory": "חובה",
+    "optional": "רשות",
+    "dayUnit": "יום",
+    "daysUnit": "ימים"
+  },
+  "drill": {
+    "requestsCount_one": "בקשת היעדרות אחת",
+    "requestsCount_other": "{{count}} בקשות היעדרות",
+    "emptyTitle": "אין היעדרויות",
+    "emptySub": "לא נמצאו רשומות לסינון הזה"
+  },
+  "toasts": {
+    "requestUpdated": "הבקשה עודכנה ונשלחה לאישור",
+    "requestSent": "הבקשה נשלחה לאישור המנהל",
+    "requestApproved": "הבקשה אושרה",
+    "requestRejected": "הבקשה נדחתה",
+    "requestsApproved_one": "בקשה אחת אושרה",
+    "requestsApproved_other": "{{count}} בקשות אושרו",
+    "requestCancelled": "הבקשה בוטלה",
+    "companyDayUpdated": "יום החברה עודכן",
+    "companyDayAdded": "יום החברה נוסף",
+    "companyDayDeleted": "יום החברה נמחק"
+  },
+  "settings": {
+    "title": "הגדרות",
+    "open": "הגדרות",
+    "boardId": "מזהה לוח",
+    "fixErrors": "יש לתקן את השדות המסומנים",
+    "tabs": {
+      "general": "כללי",
+      "boards": "לוחות",
+      "mapping": "מיפוי עמודות",
+      "team": "צוות"
+    },
+    "boards": {
+      "requestsBoardId": "לוח בקשות היעדרות",
+      "requestsBoardIdHelp": "הלוח שבו נשמרת רשומה לכל בקשת היעדרות.",
+      "companyDaysBoardId": "לוח ימי חברה וחגים",
+      "companyDaysBoardIdHelp": "הלוח של ימי החברה והחגים הכלל-ארגוניים.",
+      "entitlementsBoardId": "לוח מכסות שנתיות",
+      "entitlementsBoardIdHelp": "הלוח של המכסות השנתיות (עובד × סוג × שנה)."
+    },
+    "columns": {
+      "dateColumnId": "עמודת תאריך",
+      "typeColumnId": "עמודת סוג",
+      "personColumnId": "עמודת אדם",
+      "timelineColumnId": "עמודת טווח תאריכים",
+      "statusColumnId": "עמודת סטטוס",
+      "empNoteColumnId": "עמודת הערת עובד",
+      "mgrNoteColumnId": "עמודת הערת מנהל",
+      "decidedByColumnId": "עמודת מאשר/דוחה",
+      "decidedAtColumnId": "עמודת תאריך החלטה",
+      "fileColumnId": "עמודת קובץ",
+      "companyTimelineColumnId": "עמודת טווח תאריכים",
+      "mandatoryColumnId": "עמודת יום חובה",
+      "entPersonColumnId": "עמודת אדם",
+      "entTypeColumnId": "עמודת סוג",
+      "entYearColumnId": "עמודת שנה",
+      "entitledColumnId": "עמודת מכסה"
+    },
+    "sections": {
+      "requestColumns": "עמודות לוח הבקשות",
+      "companyDayColumns": "עמודות לוח ימי החברה",
+      "entitlementColumns": "עמודות לוח המכסות"
+    },
+    "typeValues": {
+      "title": "מיפוי ערכי סוג",
+      "help": "התווית בעמודת הסטטוס בלוח עבור כל סוג היעדרות.",
+      "vacation": "ערך חופשה",
+      "sick": "ערך מחלה",
+      "reserves": "ערך מילואים"
+    },
+    "statusValues": {
+      "title": "מיפוי ערכי סטטוס",
+      "help": "התווית בעמודת הסטטוס בלוח עבור כל מצב בקשה.",
+      "pending": "ערך ממתין לאישור",
+      "approved": "ערך מאושר",
+      "rejected": "ערך נדחה"
+    },
+    "team": {
+      "title": "צוות",
+      "teamLabel": "אנשי צוות",
+      "teamHelp": "משתמשי monday שיוצגו בלוח הצוות ובדשבורד.",
+      "managersLabel": "מנהלים",
+      "managersHelp": "תת-קבוצה מהצוות שרשאית לאשר בקשות ולראות את לשוניות המנהל.",
+      "empty": "הוסיפו מזהי משתמשים לעיל כדי לסמן מנהלים"
+    },
+    "selectColumn": "בחירת עמודה…",
+    "pickBoardFirst": "יש לבחור לוח תחילה כדי לטעון עמודות"
+  },
+  "errors": {
+    "title": "משהו השתבש"
+  }
+}
