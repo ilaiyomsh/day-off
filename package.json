@@ -10,7 +10,7 @@
     "expose": "mapps tunnel:create -p 8301",
     "build": "tsc -b && vite build",
     "deploy:build": "vite build",
-    "deploy:pages": "gh-pages -d dist -b gh-pages -t true",
+    "deploy:pages": "gh-pages -d dist -b gh-pages --dotfiles",
     "deploy": "pnpm deploy:build && pnpm deploy:pages",
     "lint": "eslint .",
     "preview": "vite preview",
