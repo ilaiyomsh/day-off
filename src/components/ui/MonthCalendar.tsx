@@ -196,15 +196,11 @@ function CalBar({ ev, onClick }: CalBarProps) {
     return (
       <div
         className={`cal-bar evt-pending${cont}`}
-        style={{ ...place, background: chip.color }}
+        style={{ ...place, '--c': chip.color } as CSSProperties}
         onClick={onClick}
         title={`${chip.label} · ${t('status.pending')}`}
       >
-        {chip.emp && (
-          <span className="evt-av" style={{ color: '#fff' }}>
-            {chip.emp.initials}
-          </span>
-        )}
+        {chip.emp ? <span className="evt-av">{chip.emp.initials}</span> : <span className="evt-dot" style={{ background: chip.color }} />}
         <span className="cal-bar-label">{chip.label}</span>
       </div>
     );
@@ -217,7 +213,7 @@ function CalBar({ ev, onClick }: CalBarProps) {
       onClick={onClick}
       title={`${chip.label} · ${t('status.approved')}`}
     >
-      {chip.emp ? <span className="evt-av">{chip.emp.initials}</span> : <span className="evt-dot" style={{ background: chip.color }} />}
+      {chip.emp && <span className="evt-av">{chip.emp.initials}</span>}
       <span className="cal-bar-label">{chip.label}</span>
     </div>
   );

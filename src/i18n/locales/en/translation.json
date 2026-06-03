@@ -325,6 +325,12 @@
       "team": "Team",
       "board": "Board"
     },
+    "language": {
+      "label": "App language",
+      "help": "The language the app is displayed in. Defaults to Hebrew.",
+      "he": "עברית",
+      "en": "English"
+    },
     "boards": {
       "requestsBoardId": "Absence requests board",
       "requestsBoardIdHelp": "The board where one record per absence request is stored.",

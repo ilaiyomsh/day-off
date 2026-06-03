@@ -141,10 +141,14 @@ export function RequestRow({ request, onClick, showEmp }: RequestRowProps) {
   const emp = empById(request.employeeId);
   const meta = ABSENCE_TYPES[request.type];
   const days = workdaysBetween(request.start, request.end);
-  const isPending = request.status === 'pending';
   return (
     <div className="list-row" style={{ cursor: 'pointer' }} onClick={() => onClick(request)}>
-      <span className="row-bar" style={isPending ? { background: meta.color } : undefined} data-status={request.status} />
+      {/* approved = full type colour, pending = same colour faded (CSS), rejected = neutral grey (CSS) */}
+      <span
+        className="row-bar"
+        style={request.status === 'rejected' ? undefined : { background: meta.color }}
+        data-status={request.status}
+      />
       {showEmp && <Avatar emp={emp} size="sm" />}
       <div className="row-main">
         <div className="row-title">

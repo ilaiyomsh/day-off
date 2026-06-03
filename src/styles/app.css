@@ -494,16 +494,17 @@ button { font-family: inherit; }
 /* segments that continue into the previous/next week lose the corresponding rounding */
 .cal-bar.cont-start { border-start-start-radius: 0; border-end-start-radius: 0; border-inline-start: none; }
 .cal-bar.cont-end { border-start-end-radius: 0; border-end-end-radius: 0; }
-/* Approved = settled = neutral; only a thin type accent for identity. */
-.cal-bar.evt-approved {
+/* Approved = settled = solid type-colour fill. */
+.cal-bar.evt-approved { background: var(--c); color: #fff; }
+/* Pending = awaiting = neutral hatched chip with a thin type accent. */
+.cal-bar.evt-pending {
   background: var(--color-bg-neutral);
   color: var(--color-text-secondary);
   border-inline-start: 3px solid color-mix(in srgb, var(--c) 55%, var(--color-border-strong));
+  background-image: repeating-linear-gradient(45deg, color-mix(in srgb, var(--color-border-strong) 24%, transparent) 0 4px, transparent 4px 8px);
 }
-.cal-bar.evt-approved.cont-start { border-inline-start: none; }
-.cal-bar.evt-approved .evt-av { background: color-mix(in srgb, var(--c) 22%, var(--color-bg-neutral-strong)); color: var(--color-text); }
-/* Pending = needs attention = saturated type color (bg set inline). */
-.cal-bar.evt-pending { color: #fff; }
+.cal-bar.evt-pending.cont-start { border-inline-start: none; }
+.cal-bar.evt-pending .evt-av { background: color-mix(in srgb, var(--c) 22%, var(--color-bg-neutral-strong)); color: var(--color-text); }
 .cal-bar.holiday-chip {
   background: color-mix(in srgb, var(--color-event-holiday) 14%, var(--color-bg-primary));
   color: var(--color-event-holiday);
@@ -572,17 +573,17 @@ button { font-family: inherit; }
   border-inline-start: 3px solid rgba(255,255,255,.5);
 }
 .evt .evt-av { width: 16px; height: 16px; font-size: 8px; border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.28); flex-shrink: 0; }
-/* Approved = settled = neutral; only a thin type accent remains for identity. */
-.evt.evt-approved {
+/* Approved = settled = solid type-colour fill. */
+.evt.evt-approved { background: var(--c); color: #fff; }
+/* Pending = awaiting = neutral chip with a thin type accent + identity dot. */
+.evt.evt-pending {
   background: var(--color-bg-neutral);
   color: var(--color-text-secondary);
   border-inline-start: 3px solid color-mix(in srgb, var(--c) 55%, var(--color-border-strong));
   font-weight: var(--font-weight-medium);
 }
-.evt.evt-approved .evt-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; opacity: .8; }
-.evt.evt-approved .evt-av { background: color-mix(in srgb, var(--c) 22%, var(--color-bg-neutral-strong)); color: var(--color-text); }
-/* Pending = needs attention = saturated type color. */
-.evt.evt-pending { color: #fff; }
+.evt.evt-pending .evt-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; opacity: .8; }
+.evt.evt-pending .evt-av { background: color-mix(in srgb, var(--c) 22%, var(--color-bg-neutral-strong)); color: var(--color-text); }
 .evt.holiday-chip { background: transparent; color: var(--color-event-holiday); border: 1px solid color-mix(in srgb, var(--color-event-holiday) 40%, transparent); border-inline-start: 3px solid var(--color-event-holiday); }
 .evt.holiday-chip.optional { color: var(--color-text-secondary); border-color: var(--color-border-strong); border-inline-start-color: var(--color-text-disabled); border-style: dashed; }
 .evt-more { font-size: 11px; color: var(--color-text-secondary); padding: 1px 6px; font-weight: var(--font-weight-medium); cursor: pointer; }
@@ -1166,8 +1167,9 @@ button { font-family: inherit; }
    Stakeholder-review revisions
    ============================================================ */
 
-/* (3) Color = pending signal: list bar colored only while pending */
-.row-bar[data-status="approved"], .row-bar[data-status="rejected"] { background: var(--color-border-strong); }
+/* (3) Status colour: approved = full type colour, pending = same colour faded, rejected = neutral grey */
+.row-bar[data-status="pending"] { opacity: .45; }
+.row-bar[data-status="rejected"] { background: var(--color-border-strong); }
 
 /* (2) Status groups */
 .req-group { margin-bottom: var(--spacing-md); }
@@ -1244,11 +1246,11 @@ button { font-family: inherit; }
 }
 .team-bar:hover { box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 42%, transparent); }
 .team-bar .tb-label { overflow: hidden; text-overflow: ellipsis; }
-/* pending = saturated (signal) */
-.team-bar.pending { background-color: var(--c); color: #fff; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.22) 0 4px, transparent 4px 8px); }
-/* approved = settled = neutral, with a small type dot for identity */
-.team-bar.approved { background: var(--color-bg-primary); color: var(--color-text); box-shadow: inset 0 0 0 1px var(--color-border-strong); }
-.team-bar.approved .tb-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+/* approved = settled = solid color fill (the type colour is the identity) */
+.team-bar.approved { background-color: var(--c); color: #fff; }
+/* pending = awaiting = neutral hatched pill, with a small type dot for identity */
+.team-bar.pending { background: var(--color-bg-primary); color: var(--color-text); box-shadow: inset 0 0 0 1px var(--color-border-strong); background-image: repeating-linear-gradient(45deg, color-mix(in srgb, var(--color-border-strong) 32%, transparent) 0 4px, transparent 4px 8px); }
+.team-bar.pending .tb-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
 
 /* (10) Company days — compact table */
 .cd-card { padding: 0; overflow: hidden; }

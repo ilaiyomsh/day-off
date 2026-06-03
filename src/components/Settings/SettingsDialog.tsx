@@ -76,6 +76,26 @@ export function SettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: 
 
   const tabs: SettingsTabDef<DayOffSettings>[] = [
     {
+      id: 'general',
+      label: t('settings.tabs.general'),
+      fields: ['languageOverride'],
+      render: ({ draft, setField }: SettingsTabRenderCtx<DayOffSettings>) => (
+        <label style={{ display: 'block' }}>
+          <span style={{ fontWeight: 600 }}>{t('settings.language.label')}</span>
+          <select
+            value={draft.languageOverride ?? 'he'}
+            onChange={(e) => setField('languageOverride', e.target.value as DayOffSettings['languageOverride'])}
+          >
+            <option value="he">{t('settings.language.he')}</option>
+            <option value="en">{t('settings.language.en')}</option>
+          </select>
+          <small style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: 4 }}>
+            {t('settings.language.help')}
+          </small>
+        </label>
+      ),
+    },
+    {
       id: 'board',
       label: t('settings.tabs.board'),
       fields: ['vacationBoardId'],

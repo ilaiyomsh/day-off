@@ -159,7 +159,7 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
                     })}
                     onClick={() => onOpenRequest(run.request)}
                   >
-                    {!run.pending && <span className="tb-dot" style={{ background: run.type.color }} />}
+                    {run.pending && <span className="tb-dot" style={{ background: run.type.color }} />}
                     <span className="tb-label">{t(run.type.labelKey)}</span>
                   </div>
                 ))}
