@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { SettingsDialogShell, type SettingsTabDef, type SettingsTabRenderCtx } from '@axis/app-core';
 import { useSettings, logger } from '../../core';
 import { mondayApi } from '../../services/mondayApi';
-import { resolveUsers } from '../../services/usersService';
+import { listAllUsers } from '../../services/usersService';
 import type { DayOffSettings, VacationColumnMap } from '../../types';
 import type { AbsenceType, RequestStatus, Employee } from '../../domain/types';
 
@@ -74,9 +74,6 @@ export function SettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const { t } = useTranslation();
   const { settings, updateSettings } = useSettings();
 
-  // resolved names for the team tab (display only).
-  const [teamUsers, setTeamUsers] = useState<Record<string, Employee>>({});
-
   const tabs: SettingsTabDef<DayOffSettings>[] = [
     {
       id: 'board',
@@ -108,9 +105,7 @@ export function SettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: 
     {
       id: 'team',
       label: t('settings.tabs.team'),
-      render: ({ draft, setDraft }: SettingsTabRenderCtx<DayOffSettings>) => (
-        <TeamTab draft={draft} setDraft={setDraft} teamUsers={teamUsers} setTeamUsers={setTeamUsers} />
-      ),
+      render: ({ draft, setDraft }: SettingsTabRenderCtx<DayOffSettings>) => <TeamTab draft={draft} setDraft={setDraft} />,
     },
   ];
 
@@ -217,99 +212,149 @@ function MappingTab({ ctx }: { ctx: SettingsTabRenderCtx<DayOffSettings> }) {
 function TeamTab({
   draft,
   setDraft,
-  teamUsers,
-  setTeamUsers,
 }: {
   draft: DayOffSettings;
   setDraft: (updater: (d: DayOffSettings) => DayOffSettings) => void;
-  teamUsers: Record<string, Employee>;
-  setTeamUsers: (updater: (prev: Record<string, Employee>) => Record<string, Employee>) => void;
 }) {
   const { t } = useTranslation();
-  const [idsText, setIdsText] = useState(draft.team.join(', '));
+  const [allUsers, setAllUsers] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [search, setSearch] = useState('');
 
-  // keep the textarea in sync when team is replaced (e.g. via import) — mirror of external state.
-  const teamKey = draft.team.join(',');
+  // Load the whole account directory once for the picker.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setIdsText(draft.team.join(', '));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamKey]);
-
-  // resolve names for display whenever the team list changes.
-  useEffect(() => {
-    const missing = draft.team.filter((id) => !teamUsers[id]);
-    if (!missing.length) return;
+    let cancelled = false;
     void (async () => {
       try {
-        const users = await resolveUsers(missing);
-        setTeamUsers((prev) => {
-          const next = { ...prev };
-          users.forEach((u) => {
-            next[u.id] = u;
-          });
-          return next;
-        });
+        const users = await listAllUsers();
+        if (!cancelled) setAllUsers(users);
       } catch (err) {
-        logger.error('SettingsDialog', 'failed to resolve team users', { err });
+        logger.error('SettingsDialog', 'failed to load users', { err });
+        if (!cancelled) setFailed(true);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.team.join(',')]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const commitIds = (raw: string) => {
-    const ids = Array.from(
-      new Set(
-        raw
-          .split(/[\s,]+/)
-          .map((s) => s.trim())
-          .filter(Boolean),
-      ),
-    );
+  const inTeam = (id: string) => draft.team.includes(id);
+  const isManager = (id: string) => draft.managers.includes(id);
+
+  // Team off → also drops manager. Manager on → also joins team.
+  const toggleTeam = (id: string, on: boolean) =>
     setDraft((d) => ({
       ...d,
-      team: ids,
-      managers: d.managers.filter((m) => ids.includes(m)),
+      team: on ? Array.from(new Set([...d.team, id])) : d.team.filter((x) => x !== id),
+      managers: on ? d.managers : d.managers.filter((x) => x !== id),
     }));
-  };
 
-  const toggleManager = (id: string, isManager: boolean) => {
+  const toggleManager = (id: string, on: boolean) =>
     setDraft((d) => ({
       ...d,
-      managers: isManager ? Array.from(new Set([...d.managers, id])) : d.managers.filter((m) => m !== id),
+      team: on ? Array.from(new Set([...d.team, id])) : d.team,
+      managers: on ? Array.from(new Set([...d.managers, id])) : d.managers.filter((x) => x !== id),
     }));
-  };
+
+  const q = search.trim().toLowerCase();
+  const filtered = q ? allUsers.filter((u) => u.name.toLowerCase().includes(q)) : allUsers;
 
   return (
-    <div style={{ display: 'grid', gap: 16 }}>
-      <label style={{ display: 'block' }}>
-        <span style={{ fontWeight: 600 }}>{t('settings.team.teamLabel')}</span>
-        <textarea value={idsText} onChange={(e) => setIdsText(e.target.value)} onBlur={(e) => commitIds(e.target.value)} rows={2} />
-        <small style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: 4 }}>{t('settings.team.teamHelp')}</small>
-      </label>
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div>
+        <span style={{ fontWeight: 600 }}>{t('settings.team.title')}</span>
+        <small style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: 2 }}>{t('settings.team.help')}</small>
+      </div>
 
-      <section style={{ display: 'grid', gap: 8 }}>
-        <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.team.managersLabel')}</h3>
-        <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.team.managersHelp')}</small>
-        {draft.team.length === 0 ? (
-          <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.team.empty')}</small>
-        ) : (
-          draft.team.map((id) => {
-            const user = teamUsers[id];
-            return (
-              <label key={id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <input type="text" placeholder={t('settings.team.search')} value={search} onChange={(e) => setSearch(e.target.value)} />
+
+      <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
+        {t('settings.team.counts', { team: draft.team.length, managers: draft.managers.length })}
+      </div>
+
+      {loading ? (
+        <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.team.loading')}</small>
+      ) : failed ? (
+        <small style={{ color: 'var(--color-danger)' }}>{t('settings.team.loadError')}</small>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gap: 2,
+            maxHeight: 320,
+            overflowY: 'auto',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-input, 8px)',
+          }}
+        >
+          {/* column header */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 64px 64px',
+              gap: 8,
+              padding: '6px 10px',
+              position: 'sticky',
+              top: 0,
+              background: 'var(--color-bg-subtle, #fafafa)',
+              fontSize: 12,
+              color: 'var(--color-text-secondary)',
+              borderBottom: '1px solid var(--color-border)',
+            }}
+          >
+            <span>{t('settings.team.user')}</span>
+            <span style={{ textAlign: 'center' }}>{t('settings.team.member')}</span>
+            <span style={{ textAlign: 'center' }}>{t('settings.team.manager')}</span>
+          </div>
+          {filtered.length === 0 ? (
+            <small style={{ color: 'var(--color-text-secondary)', padding: '8px 10px' }}>{t('settings.team.noMatch')}</small>
+          ) : (
+            filtered.map((u) => (
+              <div
+                key={u.id}
+                style={{ display: 'grid', gridTemplateColumns: '1fr 64px 64px', gap: 8, alignItems: 'center', padding: '4px 10px' }}
+              >
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <span
+                    style={{
+                      flexShrink: 0,
+                      width: 26,
+                      height: 26,
+                      borderRadius: '50%',
+                      background: u.color,
+                      color: '#fff',
+                      fontSize: 11,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {u.initials}
+                  </span>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</span>
+                </span>
                 <input
                   type="checkbox"
-                  checked={draft.managers.includes(id)}
-                  onChange={(e) => toggleManager(id, e.target.checked)}
-                  style={{ width: 'auto', marginTop: 0 }}
+                  aria-label={t('settings.team.member')}
+                  checked={inTeam(u.id)}
+                  onChange={(e) => toggleTeam(u.id, e.target.checked)}
+                  style={{ width: 'auto', marginTop: 0, justifySelf: 'center' }}
                 />
-                <span>{user ? `${user.name} (${id})` : id}</span>
-              </label>
-            );
-          })
-        )}
-      </section>
+                <input
+                  type="checkbox"
+                  aria-label={t('settings.team.manager')}
+                  checked={isManager(u.id)}
+                  onChange={(e) => toggleManager(u.id, e.target.checked)}
+                  style={{ width: 'auto', marginTop: 0, justifySelf: 'center' }}
+                />
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

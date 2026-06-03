@@ -41,27 +41,55 @@ const USERS_QUERY = `query ($ids: [ID!]) {
   users(ids: $ids) { id name title photo_thumb_small }
 }`;
 
+const ALL_USERS_QUERY = `query ($limit: Int!, $page: Int!) {
+  users(limit: $limit, page: $page, kind: non_guests) { id name title photo_thumb_small enabled }
+}`;
+
+/** Map a raw monday user → the app's Employee shape. */
+function toEmployee(u: MondayUser): Employee {
+  const id = String(u.id);
+  const name = u.name ?? '';
+  return {
+    id,
+    name,
+    title: u.title ?? undefined,
+    initials: initialsOf(name),
+    color: colorFor(id),
+    photoUrl: u.photo_thumb_small ?? undefined,
+  };
+}
+
 export async function resolveUsers(ids: string[]): Promise<Employee[]> {
   if (!ids.length) return [];
   try {
     const data = await mondayApi.query<{ users: MondayUser[] | null }>(USERS_QUERY, {
       ids: ids.map((id) => String(id)),
     });
-    const users = data.users ?? [];
-    return users.map((u): Employee => {
-      const id = String(u.id);
-      const name = u.name ?? '';
-      return {
-        id,
-        name,
-        title: u.title ?? undefined,
-        initials: initialsOf(name),
-        color: colorFor(id),
-        photoUrl: u.photo_thumb_small ?? undefined,
-      };
-    });
+    return (data.users ?? []).map(toEmployee);
   } catch (err) {
     logger.error('usersService', 'resolveUsers failed', err);
+    throw err;
+  }
+}
+
+/** Fetch every active (non-guest) user in the account — for the team people-picker. */
+export async function listAllUsers(): Promise<Employee[]> {
+  const LIMIT = 200;
+  try {
+    const out: Employee[] = [];
+    for (let page = 1; ; page += 1) {
+      const data = await mondayApi.query<{ users: (MondayUser & { enabled?: boolean | null })[] | null }>(
+        ALL_USERS_QUERY,
+        { limit: LIMIT, page },
+      );
+      const batch = data.users ?? [];
+      out.push(...batch.filter((u) => u.enabled !== false).map(toEmployee));
+      if (batch.length < LIMIT) break;
+    }
+    out.sort((a, b) => a.name.localeCompare(b.name, 'he'));
+    return out;
+  } catch (err) {
+    logger.error('usersService', 'listAllUsers failed', err);
     throw err;
   }
 }

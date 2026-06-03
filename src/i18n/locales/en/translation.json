@@ -372,12 +372,21 @@
       "rejected": "Rejected value"
     },
     "team": {
-      "title": "Team",
+      "title": "Team & managers",
       "teamLabel": "Team members",
       "teamHelp": "monday users shown in the team board and dashboard.",
       "managersLabel": "Managers",
       "managersHelp": "A subset of the team allowed to approve requests and see the manager tabs.",
-      "empty": "Add user IDs above to mark managers"
+      "empty": "Add user IDs above to mark managers",
+      "help": "Pick the team members, and mark which of them are managers. Managers approve requests and see the manager tabs.",
+      "search": "Search user…",
+      "counts": "{{team}} in team · {{managers}} managers",
+      "loading": "Loading users…",
+      "loadError": "Failed to load users",
+      "user": "User",
+      "member": "Team",
+      "manager": "Manager",
+      "noMatch": "No users found"
     },
     "selectColumn": "Select a column…",
     "pickBoardFirst": "Pick a board first to load its columns",
