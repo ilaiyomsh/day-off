@@ -59,6 +59,22 @@ function toEmployee(u: MondayUser): Employee {
   };
 }
 
+const ME_QUERY = `query { me { id name title photo_thumb_small } }`;
+
+/**
+ * The authenticated user, resolved from the session via `me` — reliable even
+ * when monday's context.user is absent (standalone Custom Object apps).
+ */
+export async function getMe(): Promise<Employee | null> {
+  try {
+    const data = await mondayApi.query<{ me: MondayUser | null }>(ME_QUERY);
+    return data.me ? toEmployee(data.me) : null;
+  } catch (err) {
+    logger.error('usersService', 'getMe failed', err);
+    throw err;
+  }
+}
+
 export async function resolveUsers(ids: string[]): Promise<Employee[]> {
   if (!ids.length) return [];
   try {

@@ -51,7 +51,7 @@ App.tsx
 | Domain | `src/domain/*` | `types.ts`, pure `dates.ts` (+ `useL10n.ts` i18n binding), `absence.ts` (types + balance analytics) |
 | Services | `src/services/*` | `columnMap` (monday value (de)serialization) + `requests`/`companyDays`/`entitlements`/`users` services |
 | i18n | `src/i18n/` | i18next + he/en bundles (all UI strings, date-name arrays) |
-| Types | `src/types/index.ts` | `DayOffSettings` (boards + column maps + type/status value maps + team/managers) |
+| Types | `src/types/index.ts` | `DayOffSettings` (boards + column maps + type/status value maps + `teams[]`), `Team` |
 
 ## 5. Data model (monday boards, configured in Settings)
 - **Requests board** (`requestsBoardId`) — one item per absence request. Columns mapped by id: Person
@@ -62,8 +62,15 @@ App.tsx
   mandatory.
 - **Entitlements board** (`entitlementsBoardId`) — row per (Person × Type × Year × entitled-number).
   `used`/`pending` are **computed live** from approved/pending requests (`domain/absence`), not stored.
-- **Team & roles** — `team` (member user ids) + `managers` (who approves / sees manager tabs);
-  resolved to `Employee` via the monday `users` API. `isManager = managers.includes(currentUser.id)`.
+- **Teams & roles** — `teams: Team[]`, each `{ id, name, managers[], employees[] }` (monday user ids).
+  Configured in Settings via a People-column-style `PeoplePicker` (one card per team). Legacy flat
+  `{ team, managers }` is migrated to a single team on load (`core.ts` `migrate`). Users resolve to
+  `Employee` via the monday `users` API; the current user via `me`. The provider derives:
+  `isManager` (manager in **any** team), `myTeams` (teams the user is in), `teamIds` (the user's
+  visible member universe), and `teamsOf(empId)` (for the team label on a request). The Team view groups
+  the Gantt by team when the user is in >1 team; Dashboard offers a per-team filter when >1 team;
+  Approvals labels each request with the requester's team(s). Avatars show `photo_thumb_small`
+  (`photoUrl`) with an initials fallback.
 
 > **Known limitation (v1):** creating a request does **not** upload a new file attachment — monday
 > file upload needs the multipart endpoint (`TODO(attachment-upload)` in `requestsService`). Existing

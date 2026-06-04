@@ -24,6 +24,16 @@ export const logger = createLogger({
 export const { SettingsProvider, useSettings } = createSettings<DayOffSettings>({
   storageKeyPrefix: 'customSettings_',
   defaults: DEFAULT_SETTINGS,
+  // Legacy flat { team, managers } → a single team. Runs once on load.
+  // Name is left blank; the UI shows a translated placeholder for empty names.
+  migrate: (raw) => {
+    if (Array.isArray(raw.teams)) return {};
+    const team = Array.isArray(raw.team) ? (raw.team as string[]) : [];
+    const managers = Array.isArray(raw.managers) ? (raw.managers as string[]) : [];
+    if (!team.length && !managers.length) return { teams: [] };
+    const employees = team.filter((id) => !managers.includes(id));
+    return { teams: [{ id: 'team-1', name: '', managers, employees }] };
+  },
   validate: (s) => {
     const errors: Record<string, string> = {};
     if (!s.vacationBoardId) errors.vacationBoardId = 'app.notConfigured';

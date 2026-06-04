@@ -34,6 +34,9 @@ export const ICON_PATHS: Record<string, string> = {
   star: 'M12 2l2.4 7.4H22l-6 4.6 2.3 7.4L12 17l-6.3 4.4L8 14 2 9.4h7.6L12 2z',
   chart: 'M3 3v18h18 M18 17V9 M13 17V5 M8 17v-3',
   filter: 'M22 3H2l8 9.46V19l4 2v-8.54L22 3z',
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35',
+  settings:
+    'M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z',
 };
 
 export interface IconProps {
@@ -42,9 +45,11 @@ export interface IconProps {
   strokeWidth?: number;
   fill?: string;
   style?: CSSProperties;
+  /** Pass "rtl-flip" for directional chevrons/arrows so they mirror under [dir="rtl"]. */
+  className?: string;
 }
 
-export function Icon({ name, size = 18, strokeWidth = 1.75, fill = 'none', style }: IconProps) {
+export function Icon({ name, size = 18, strokeWidth = 1.75, fill = 'none', style, className }: IconProps) {
   const d = ICON_PATHS[name] ?? '';
   return (
     <svg
@@ -56,6 +61,7 @@ export function Icon({ name, size = 18, strokeWidth = 1.75, fill = 'none', style
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
+      className={className}
       style={{ flexShrink: 0, ...style }}
       aria-hidden="true"
     >

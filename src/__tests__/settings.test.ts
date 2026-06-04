@@ -16,9 +16,8 @@ describe('DEFAULT_SETTINGS', () => {
     expect(DEFAULT_SETTINGS.statusValues).toEqual({ pending: '', approved: '', rejected: '' });
   });
 
-  it('starts with empty team and managers', () => {
-    expect(DEFAULT_SETTINGS.team).toEqual([]);
-    expect(DEFAULT_SETTINGS.managers).toEqual([]);
+  it('starts with no teams', () => {
+    expect(DEFAULT_SETTINGS.teams).toEqual([]);
   });
 
   it('has null language override and lastModifiedAt', () => {

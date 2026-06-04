@@ -8,7 +8,7 @@
  */
 import { useRef, useState } from 'react';
 import type { AbsenceType, Attachment, RequestDraft, Employee } from '../../domain/types';
-import { ABSENCE_TYPES, TYPE_ICON, TYPE_ORDER, DOC_HINT_KEY } from '../../domain/absence';
+import { ABSENCE_TYPES, TYPE_ICON, TYPE_ORDER } from '../../domain/absence';
 import { todayKey, workdaysBetween, calDaysBetween } from '../../domain/dates';
 import { useL10n } from '../../domain/useL10n';
 import { useDayOffData } from '../../contexts/DayOffDataProvider';
@@ -71,7 +71,6 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit }: Reques
   return (
     <Modal
       title={initial?.id ? t('request.editTitle') : t('request.newTitle')}
-      sub={t('request.sub', { name: currentUser.name })}
       onClose={onClose}
       footer={
         <>
@@ -189,7 +188,6 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit }: Reques
           value={note}
           onChange={(e) => setNote(e.target.value)}
         />
-        <span className="field-hint">{t('request.noteHint')}</span>
       </div>
 
       <div className="field">
@@ -224,7 +222,6 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit }: Reques
           >
             <Icon name="paperclip" size={17} />
             <span>{t('request.filePick')}</span>
-            <span className="fd-hint">{t(DOC_HINT_KEY[type])}</span>
           </button>
         )}
         <input

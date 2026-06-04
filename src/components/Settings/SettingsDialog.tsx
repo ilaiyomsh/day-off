@@ -4,7 +4,8 @@ import { SettingsDialogShell, type SettingsTabDef, type SettingsTabRenderCtx } f
 import { useSettings, logger } from '../../core';
 import { mondayApi } from '../../services/mondayApi';
 import { listAllUsers } from '../../services/usersService';
-import type { DayOffSettings, VacationColumnMap } from '../../types';
+import { Icon, PeoplePicker } from '../ui';
+import type { DayOffSettings, Team, VacationColumnMap } from '../../types';
 import type { AbsenceType, RequestStatus, Employee } from '../../domain/types';
 
 /** A board column descriptor as returned by mondayApi.getBoard. */
@@ -228,7 +229,13 @@ function MappingTab({ ctx }: { ctx: SettingsTabRenderCtx<DayOffSettings> }) {
   );
 }
 
-/** Team & roles tab — comma-separated member ids + per-member manager toggle. */
+/** A locally-unique id for a new team. */
+function newTeamId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return `team-${Date.now()}-${Math.floor(performance.now())}`;
+}
+
+/** Teams tab — one card per team, each with a managers + employees people-picker. */
 function TeamTab({
   draft,
   setDraft,
@@ -240,9 +247,8 @@ function TeamTab({
   const [allUsers, setAllUsers] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
-  const [search, setSearch] = useState('');
 
-  // Load the whole account directory once for the picker.
+  // Load the whole account directory once for the pickers.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
@@ -261,38 +267,39 @@ function TeamTab({
     };
   }, []);
 
-  const inTeam = (id: string) => draft.team.includes(id);
-  const isManager = (id: string) => draft.managers.includes(id);
+  const teams = draft.teams;
+  const totalManagers = new Set(teams.flatMap((tm) => tm.managers)).size;
 
-  // Team off → also drops manager. Manager on → also joins team.
-  const toggleTeam = (id: string, on: boolean) =>
+  const patchTeam = (id: string, patch: Partial<Team>) =>
+    setDraft((d) => ({ ...d, teams: d.teams.map((tm) => (tm.id === id ? { ...tm, ...patch } : tm)) }));
+  // Managers & employees are mutually exclusive within a team.
+  const setManagers = (id: string, ids: string[]) =>
     setDraft((d) => ({
       ...d,
-      team: on ? Array.from(new Set([...d.team, id])) : d.team.filter((x) => x !== id),
-      managers: on ? d.managers : d.managers.filter((x) => x !== id),
+      teams: d.teams.map((tm) =>
+        tm.id === id ? { ...tm, managers: ids, employees: tm.employees.filter((x) => !ids.includes(x)) } : tm,
+      ),
     }));
-
-  const toggleManager = (id: string, on: boolean) =>
+  const setEmployees = (id: string, ids: string[]) =>
     setDraft((d) => ({
       ...d,
-      team: on ? Array.from(new Set([...d.team, id])) : d.team,
-      managers: on ? Array.from(new Set([...d.managers, id])) : d.managers.filter((x) => x !== id),
+      teams: d.teams.map((tm) =>
+        tm.id === id ? { ...tm, employees: ids, managers: tm.managers.filter((x) => !ids.includes(x)) } : tm,
+      ),
     }));
-
-  const q = search.trim().toLowerCase();
-  const filtered = q ? allUsers.filter((u) => u.name.toLowerCase().includes(q)) : allUsers;
+  const addTeam = () =>
+    setDraft((d) => ({ ...d, teams: [...d.teams, { id: newTeamId(), name: '', managers: [], employees: [] }] }));
+  const removeTeam = (id: string) => setDraft((d) => ({ ...d, teams: d.teams.filter((tm) => tm.id !== id) }));
 
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div className="teams-tab">
       <div>
         <span style={{ fontWeight: 600 }}>{t('settings.team.title')}</span>
         <small style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: 2 }}>{t('settings.team.help')}</small>
       </div>
 
-      <input type="text" placeholder={t('settings.team.search')} value={search} onChange={(e) => setSearch(e.target.value)} />
-
       <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-        {t('settings.team.counts', { team: draft.team.length, managers: draft.managers.length })}
+        {t('settings.team.counts', { team: teams.length, managers: totalManagers })}
       </div>
 
       {loading ? (
@@ -300,80 +307,52 @@ function TeamTab({
       ) : failed ? (
         <small style={{ color: 'var(--color-danger)' }}>{t('settings.team.loadError')}</small>
       ) : (
-        <div
-          style={{
-            display: 'grid',
-            gap: 2,
-            maxHeight: 320,
-            overflowY: 'auto',
-            border: '1px solid var(--color-border)',
-            borderRadius: 'var(--radius-input, 8px)',
-          }}
-        >
-          {/* column header */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 64px 64px',
-              gap: 8,
-              padding: '6px 10px',
-              position: 'sticky',
-              top: 0,
-              background: 'var(--color-bg-subtle, #fafafa)',
-              fontSize: 12,
-              color: 'var(--color-text-secondary)',
-              borderBottom: '1px solid var(--color-border)',
-            }}
-          >
-            <span>{t('settings.team.user')}</span>
-            <span style={{ textAlign: 'center' }}>{t('settings.team.member')}</span>
-            <span style={{ textAlign: 'center' }}>{t('settings.team.manager')}</span>
-          </div>
-          {filtered.length === 0 ? (
-            <small style={{ color: 'var(--color-text-secondary)', padding: '8px 10px' }}>{t('settings.team.noMatch')}</small>
-          ) : (
-            filtered.map((u) => (
-              <div
-                key={u.id}
-                style={{ display: 'grid', gridTemplateColumns: '1fr 64px 64px', gap: 8, alignItems: 'center', padding: '4px 10px' }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                  <span
-                    style={{
-                      flexShrink: 0,
-                      width: 26,
-                      height: 26,
-                      borderRadius: '50%',
-                      background: u.color,
-                      color: '#fff',
-                      fontSize: 11,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {u.initials}
-                  </span>
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name}</span>
-                </span>
+        <>
+          {teams.length === 0 && <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.team.empty')}</small>}
+          {teams.map((tm, i) => (
+            <div className="team-card" key={tm.id}>
+              <div className="team-card-head">
                 <input
-                  type="checkbox"
-                  aria-label={t('settings.team.member')}
-                  checked={inTeam(u.id)}
-                  onChange={(e) => toggleTeam(u.id, e.target.checked)}
-                  style={{ width: 'auto', marginTop: 0, justifySelf: 'center' }}
+                  className="team-name-input"
+                  value={tm.name}
+                  placeholder={t('settings.team.namePlaceholder', { n: i + 1 })}
+                  onChange={(e) => patchTeam(tm.id, { name: e.target.value })}
                 />
-                <input
-                  type="checkbox"
-                  aria-label={t('settings.team.manager')}
-                  checked={isManager(u.id)}
-                  onChange={(e) => toggleManager(u.id, e.target.checked)}
-                  style={{ width: 'auto', marginTop: 0, justifySelf: 'center' }}
+                <button
+                  type="button"
+                  className="team-remove"
+                  aria-label={t('settings.team.removeTeam')}
+                  title={t('settings.team.removeTeam')}
+                  onClick={() => removeTeam(tm.id)}
+                >
+                  <Icon name="trash" size={16} />
+                </button>
+              </div>
+              <div className="team-field">
+                <label>{t('settings.team.managersField')}</label>
+                <PeoplePicker
+                  users={allUsers}
+                  value={tm.managers}
+                  onChange={(ids) => setManagers(tm.id, ids)}
+                  placeholder={t('settings.team.managersPlaceholder')}
                 />
               </div>
-            ))
-          )}
-        </div>
+              <div className="team-field">
+                <label>{t('settings.team.employeesField')}</label>
+                <PeoplePicker
+                  users={allUsers}
+                  value={tm.employees}
+                  onChange={(ids) => setEmployees(tm.id, ids)}
+                  placeholder={t('settings.team.employeesPlaceholder')}
+                />
+              </div>
+            </div>
+          ))}
+
+          <button type="button" className="btn add-team-btn" onClick={addTeam}>
+            <Icon name="plus" size={16} strokeWidth={2.5} /> {t('settings.team.addTeam')}
+          </button>
+        </>
       )}
     </div>
   );

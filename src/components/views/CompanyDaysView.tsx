@@ -75,7 +75,7 @@ export function CompanyDaysView({ year, onYearChange, onAdd, onEdit }: CompanyDa
                       </span>
                     </td>
                     <td className="cd-edit">
-                      <Icon name="chevron-right" size={17} style={{ color: 'var(--color-text-disabled)' }} />
+                      <Icon name="chevron-right" size={17} className="rtl-flip" style={{ color: 'var(--color-text-disabled)' }} />
                     </td>
                   </tr>
                 );

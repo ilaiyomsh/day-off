@@ -28,7 +28,13 @@ export function ApprovalsView({
   onApproveAll,
 }: ApprovalsViewProps) {
   const { t, relDays } = useL10n();
-  const { requests, empById, balanceFor } = useDayOffData();
+  const { requests, empById, balanceFor, teams, teamsOf } = useDayOffData();
+
+  // Comma-joined team names for a given employee (label shown next to the name).
+  const teamLabel = (empId: string) =>
+    teamsOf(empId)
+      .map((tm) => tm.name || t('settings.team.namePlaceholder', { n: teams.indexOf(tm) + 1 }))
+      .join(' · ');
 
   const pending = requests
     .filter((r) => r.status === 'pending' && r.employeeId !== currentUserId)
@@ -72,6 +78,7 @@ export function ApprovalsView({
                 <div className="row-main" style={{ cursor: 'pointer' }} onClick={() => onOpenRequest(r)}>
                   <div className="row-title">
                     {emp?.name}
+                    {teamLabel(r.employeeId) && <span className="row-team">{teamLabel(r.employeeId)}</span>}
                     <span className="type-chip" style={{ fontSize: 12 }}>
                       <span className="dot" style={{ background: meta.color }} />
                       {t(meta.labelKey)}
@@ -126,13 +133,6 @@ export function ApprovalsView({
         </>
       )}
 
-      {/* OUT OF SCOPE (prototype): approval-authority logic — who may approve whose
-          leave (e.g. each manager approving only their own reports) — is a future
-          backend concern and is intentionally NOT implemented here. */}
-      <div className="scope-note">
-        <Icon name="info" size={14} />
-        {t('views.approvals.scopeNote')}
-      </div>
     </div>
   );
 }

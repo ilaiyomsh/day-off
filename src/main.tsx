@@ -1,3 +1,4 @@
+import '@vibe/core/tokens'; // @vibe/core design tokens — must load before our CSS
 import './i18n';
 import './styles/tokens.css';
 import './styles/app.css';

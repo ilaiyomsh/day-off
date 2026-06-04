@@ -69,6 +69,20 @@ export interface KindValueMap {
 }
 
 /**
+ * A team — a named group with its own managers and employees (monday user ids).
+ * A user may appear in several teams, and may be a manager in one while an
+ * employee in another. `managers` may approve requests and see the manager tabs.
+ */
+export interface Team {
+  id: string;
+  name: string;
+  /** Monday user ids that manage this team (approve + see manager tabs). */
+  managers: string[];
+  /** Monday user ids that belong to this team as regular members. */
+  employees: string[];
+}
+
+/**
  * Day-off settings — custom object app (no reliable context.boardId, so the
  * board + column mappings + team/roles are configured here). All day-off data
  * lives on ONE board; the kind status column splits general vs personal.
@@ -83,10 +97,8 @@ export interface DayOffSettings {
   typeValues: TypeValueMap;
   /** Approval status enum → board status label (pending/approved/rejected). */
   statusValues: StatusValueMap;
-  /** Team member monday user IDs shown in the team/dashboard views. */
-  team: string[];
-  /** Subset of `team` (or any user IDs) that may approve and see manager tabs. */
-  managers: string[];
+  /** Teams — each with its own managers + employees. Source of truth for roles. */
+  teams: Team[];
   languageOverride?: Language | null;
   lastModifiedAt?: string | null;
 }
@@ -97,8 +109,7 @@ export const DEFAULT_SETTINGS: DayOffSettings = {
   kindValues: { general: '', personal: '' },
   typeValues: { vacation: '', sick: '', reserves: '' },
   statusValues: { pending: '', approved: '', rejected: '' },
-  team: [],
-  managers: [],
+  teams: [],
   languageOverride: null,
   lastModifiedAt: null,
 };

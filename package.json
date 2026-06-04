@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "@axis/app-core": "link:../Services/axis-app-core",
+    "@vibe/core": "^4.2.5",
+    "@vibe/icons": "^4.1.0",
     "i18next": "^26.0.8",
     "monday-sdk-js": "^0.5.7",
     "react": "^19.2.0",

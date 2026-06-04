@@ -4,7 +4,7 @@
  * Ported from dashboard.jsx; data comes from useDayOffData() + domain/absence
  * analytics instead of window.DayOffData.
  */
-import { useState, type ReactElement } from 'react';
+import { useMemo, useState, type ReactElement } from 'react';
 import { ABSENCE_TYPES, TYPE_ORDER } from '../../domain/absence';
 import { eachDay, fromKey, isWeekend, toKey } from '../../domain/dates';
 import { useL10n } from '../../domain/useL10n';
@@ -82,18 +82,28 @@ type Grouping = 'months' | 'quarters';
    ============================================================ */
 export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardViewProps) {
   const { t, monthShort } = useL10n();
-  const { requests, teamIds, empById, balanceFor, years } = useDayOffData();
+  const { requests, teamIds, myTeams, empById, balanceFor, years } = useDayOffData();
   const [grouping, setGrouping] = useState<Grouping>('months');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [empFilter, setEmpFilter] = useState<string>('all');
   const todayKey = toKey(new Date());
 
-  // base set: team members, approved + pending, year, type + employee filters
+  // The member-id universe the dashboard considers: all visible members, a
+  // single team (`team:<id>`), or one employee.
+  const universe = useMemo<string[]>(() => {
+    if (empFilter === 'all') return teamIds;
+    if (empFilter.startsWith('team:')) {
+      const tm = myTeams.find((x) => x.id === empFilter.slice(5));
+      return tm ? [...new Set([...tm.managers, ...tm.employees])] : teamIds;
+    }
+    return [empFilter];
+  }, [empFilter, teamIds, myTeams]);
+
+  // base set: members in scope, approved + pending, year, type filter
   const filteredReqs = requests.filter((r) =>
-    teamIds.includes(r.employeeId) &&
+    universe.includes(r.employeeId) &&
     (r.status === 'approved' || r.status === 'pending') &&
     (typeFilter === 'all' || r.type === typeFilter) &&
-    (empFilter === 'all' || r.employeeId === empFilter) &&
     reqWorkdaysInYear(r, year).length > 0
   );
 
@@ -118,14 +128,14 @@ export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardView
   const pendingReqs = filteredReqs.filter((r) => r.status === 'pending');
 
   // KPI: who's off today (approved, respects type/emp filter)
-  const offTodayIds = (empFilter === 'all' ? teamIds : [empFilter]).filter((id) =>
+  const offTodayIds = universe.filter((id) =>
     requests.some((r) => r.employeeId === id && r.status === 'approved' &&
       todayKey >= r.start && todayKey <= r.end && (typeFilter === 'all' || r.type === typeFilter)));
 
   // KPI: average vacation-quota utilization
   const utilType: AbsenceType = typeFilter === 'all' ? 'vacation' : typeFilter;
   const utilLabel = t(ABSENCE_TYPES[utilType].labelKey);
-  const utilUniverse = empFilter === 'all' ? teamIds : [empFilter];
+  const utilUniverse = universe;
   const utilRows = utilUniverse
     .map((id) => {
       const b = balanceFor(year, id, utilType);
@@ -149,7 +159,7 @@ export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardView
   const scale = PLOT / niceMax;
 
   // employee rows
-  const empUniverse = empFilter === 'all' ? teamIds : [empFilter];
+  const empUniverse = universe;
   const empRows = empUniverse
     .map((id) => ({ id, cells: empCells[id] || emptyCells(), total: cellsTotal(empCells[id] || emptyCells()) }))
     .sort((a, b) => b.total - a.total);

@@ -21,6 +21,10 @@ body {
 button { font-family: inherit; }
 [role="button"], button, a { -webkit-tap-highlight-color: rgba(0,115,234,0.1); }
 
+/* Directional icons (nav arrows, drill-in chevrons) mirror under RTL. Marked
+   per-use with className="rtl-flip"; no-op in LTR. */
+[dir="rtl"] .rtl-flip { transform: scaleX(-1); }
+
 .app {
   display: flex;
   flex-direction: column;
@@ -67,6 +71,26 @@ button { font-family: inherit; }
   font-size: 12px;
   color: var(--color-text-secondary);
   font-weight: var(--font-weight-medium);
+}
+
+/* settings icon (managers only) */
+.settings-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-divider);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color var(--transition-base), border-color var(--transition-base), color var(--transition-base);
+}
+.settings-btn:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
 }
 
 /* persona switcher */
@@ -140,6 +164,8 @@ button { font-family: inherit; }
 }
 .avatar.lg { width: 38px; height: 38px; font-size: 14px; }
 .avatar.sm { width: 24px; height: 24px; font-size: 10px; }
+.avatar { overflow: hidden; }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 
 /* ---------- Tabs ---------- */
 .tabs {
@@ -196,7 +222,8 @@ button { font-family: inherit; }
 }
 .page {
   max-width: 1180px;
-  margin: 0 auto;
+  /* flush to the physical-left edge (LTR feel) instead of centered */
+  margin: 0 auto 0 0;
   animation: pageIn .22s ease;
 }
 @keyframes pageIn { from { transform: translateY(6px); } to { transform: none; } }
@@ -663,7 +690,7 @@ button { font-family: inherit; }
 
 /* ---------- Team board ---------- */
 .team-board { overflow-x: auto; }
-.team-grid { display: grid; min-width: 760px; }
+.team-grid { display: grid; min-width: 820px; }
 .team-corner, .team-dayhead, .team-name, .team-cell { border-inline-start: 1px solid var(--color-border-separator); border-bottom: 1px solid var(--color-border-separator); }
 .team-head-row, .team-row { display: grid; }
 .team-corner {
@@ -1178,35 +1205,21 @@ button { font-family: inherit; }
 .group-tick.approved { background: var(--color-approval-green); }
 .group-tick.rejected { background: var(--color-danger); }
 
-/* (1) My absences — main column + balance side rail */
+/* (1) My absences — top stats (.balance-grid), then calendar (right) + requests list (left ~20%) */
 .emp-page { max-width: 1280px; }
-.emp-layout { display: grid; grid-template-columns: minmax(0, 1fr) 256px; gap: var(--spacing-xl); align-items: start; }
+.emp-layout { display: grid; grid-template-columns: minmax(0, 1fr) 20%; gap: var(--spacing-xl); align-items: start; }
 .emp-main { min-width: 0; }
-.emp-rail { display: flex; flex-direction: column; gap: var(--spacing-md); position: sticky; top: 0; }
-.emp-rail .balance-card { padding: var(--spacing-md) var(--spacing-lg); }
-.emp-rail .balance-remaining { font-size: 27px; }
-.emp-rail .balance-of { font-size: 13px; }
-/* compact (no-quota) balances: sick / reserves */
-.mini-balances { padding: 2px 0; }
-.mini-bal { display: flex; align-items: center; gap: var(--spacing-sm); padding: var(--spacing-sm) var(--spacing-lg); }
-.mini-bal + .mini-bal { border-top: 1px solid var(--color-border-separator); }
-.mini-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
-.mini-label { font-size: 13px; font-weight: var(--font-weight-medium); color: var(--color-text); }
-.mini-val { margin-inline-start: auto; font-size: 12.5px; color: var(--color-text-secondary); white-space: nowrap; }
-.mini-val b { color: var(--color-text-on-dark); font-weight: var(--font-weight-semibold); font-size: 14px; }
-.mini-pending { font-size: 11.5px; font-weight: var(--font-weight-medium); }
-.rail-title { font-size: 12px; font-weight: var(--font-weight-semibold); color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .04em; padding-inline-start: 2px; }
-.section-head-row { display: flex; align-items: center; justify-content: space-between; margin: var(--spacing-lg) 0 var(--spacing-sm); }
+.emp-side { min-width: 0; display: flex; flex-direction: column; }
+.emp-side .section-head-row { margin-top: 0; }
+/* compact rows for the narrow side list */
+.emp-side .list-row { padding-inline: var(--spacing-md); }
+.emp-side .row-meta { flex-wrap: wrap; row-gap: 2px; }
+.section-head-row { display: flex; align-items: center; justify-content: space-between; margin: 0 0 var(--spacing-sm); }
 .block-title { margin: 0; font-size: 16px; font-weight: var(--font-weight-semibold); color: var(--color-text-on-dark); letter-spacing: -0.2px; }
 .block-title .count { font-size: 13px; color: var(--color-text-tertiary); font-weight: var(--font-weight-medium); }
 @media (max-width: 1000px) {
   .emp-layout { grid-template-columns: 1fr; }
-  .emp-rail { position: static; flex-direction: row; align-items: stretch; }
-  .emp-rail .balance-card, .emp-rail .mini-balances { flex: 1; min-width: 0; }
-  .emp-rail .mini-balances { display: flex; flex-direction: column; justify-content: center; }
-  .rail-title { display: none; }
 }
-@media (max-width: 620px) { .emp-rail { flex-direction: column; } }
 
 /* (6) Two notes block in the request-detail modal */
 .notes-block { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-md); }
@@ -1269,3 +1282,54 @@ button { font-family: inherit; }
 .cd-num-col { color: var(--color-text-secondary); white-space: nowrap; }
 .cd-edit { width: 40px; text-align: center; color: var(--color-text-disabled); }
 @media (max-width: 620px) { .cd-num-col { display: none; } }
+
+/* ---------- People picker (monday People-column style, @vibe/core) ---------- */
+.ppicker { position: relative; }
+.ppicker-field {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  min-height: 38px; padding: 5px 8px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-input, 8px);
+  background: var(--color-bg-primary); cursor: pointer;
+  transition: border-color var(--transition-base);
+}
+.ppicker-field:hover { border-color: var(--color-border-strong); }
+.ppicker-field.is-disabled { opacity: .6; pointer-events: none; }
+.ppicker-ph { display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-tertiary); font-size: 13px; }
+.ppicker-pop {
+  /* open anchored to the field's right edge, expanding leftward */
+  position: absolute; z-index: 1900; top: calc(100% + 4px); right: 0; left: auto;
+  width: 300px; max-width: 90vw; background: var(--color-bg-primary);
+  border: 1px solid var(--color-border); border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0,0,0,.16); padding: 10px; display: flex; flex-direction: column; gap: 8px;
+}
+.ppicker-chips { display: flex; flex-wrap: wrap; gap: 4px; padding-bottom: 8px; border-bottom: 1px solid var(--color-border-separator); max-height: 110px; overflow-y: auto; }
+
+/* ---------- Teams settings tab ---------- */
+.teams-tab { display: grid; gap: 12px; }
+.team-card {
+  border: 1px solid var(--color-border); border-radius: var(--radius-card, 10px);
+  padding: 12px; display: grid; gap: 10px; background: var(--color-bg-subtle, #fafafa);
+}
+.team-card-head { display: flex; align-items: center; gap: 8px; }
+.team-name-input { flex: 1; font-weight: var(--font-weight-semibold); }
+.team-remove {
+  display: grid; place-items: center; width: 32px; height: 32px; border-radius: 6px;
+  color: var(--color-text-tertiary); background: transparent; cursor: pointer; flex-shrink: 0;
+}
+.team-remove:hover { background: color-mix(in srgb, var(--color-danger) 12%, transparent); color: var(--color-danger); }
+.team-field { display: grid; gap: 4px; }
+.team-field > label { font-size: 12px; font-weight: var(--font-weight-medium); color: var(--color-text-secondary); }
+.add-team-btn { justify-self: start; display: inline-flex; align-items: center; gap: 6px; }
+
+/* Team group header inside the Team-view Gantt (only when >1 team). */
+.team-group-head {
+  grid-column: 1 / -1; padding: 8px 12px; font-size: 13px; font-weight: var(--font-weight-semibold);
+  color: var(--color-text); background: var(--color-bg-tertiary);
+  border-bottom: 1px solid var(--color-border-separator); position: sticky; inset-inline-start: 0;
+}
+
+/* Team label next to a requester's name in Approvals. */
+.row-team {
+  font-size: 11.5px; font-weight: var(--font-weight-medium); color: var(--color-text-secondary);
+  background: var(--color-bg-neutral); padding: 1px 8px; border-radius: var(--radius-full); white-space: nowrap;
+}

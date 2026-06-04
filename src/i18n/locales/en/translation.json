@@ -1,4 +1,12 @@
 {
+  "peoplePicker": {
+    "placeholder": "Add people…",
+    "search": "Search names…",
+    "suggested": "Suggested people",
+    "noMatch": "No users found",
+    "add": "Add",
+    "remove": "Remove"
+  },
   "app": {
     "title": "Days off",
     "brandSub": "Day Off · vacations & holidays management",
@@ -9,7 +17,7 @@
   },
   "tabs": {
     "mine": "My absences",
-    "team": "Team board",
+    "team": "Team availability",
     "dashboard": "Dashboard",
     "approvals": "Approvals",
     "company": "Company days"
@@ -120,7 +128,7 @@
       "emptySub": "Add a request to plan a vacation"
     },
     "team": {
-      "title": "Team board",
+      "title": "Team availability",
       "offToday_one": "1 team member off today",
       "offToday_other": "{{count}} team members off today",
       "allPresent": "Everyone is present today",
@@ -231,7 +239,7 @@
     "overBalance": "The request exceeds your {{type}} balance ({{count}} days). You may still submit — the manager will decide.",
     "overlapHolidays": "The range includes company days: {{names}}. These days usually don't count against the quota.",
     "noteLabel": "Note to manager",
-    "notePlaceholder": "Anything you write here will be shown to the approving manager — reason, details or a link to a document…",
+    "notePlaceholder": "Reason or additional details (optional)",
     "noteHint": "This note is written by you, the employee. The manager can add their own note upon approval.",
     "fileLabel": "Attach document",
     "fileOptional": "(optional)",
@@ -378,21 +386,20 @@
       "rejected": "Rejected value"
     },
     "team": {
-      "title": "Team & managers",
-      "teamLabel": "Team members",
-      "teamHelp": "monday users shown in the team board and dashboard.",
-      "managersLabel": "Managers",
-      "managersHelp": "A subset of the team allowed to approve requests and see the manager tabs.",
-      "empty": "Add user IDs above to mark managers",
-      "help": "Pick the team members, and mark which of them are managers. Managers approve requests and see the manager tabs.",
-      "search": "Search user…",
-      "counts": "{{team}} in team · {{managers}} managers",
+      "title": "Teams & managers",
+      "help": "Create teams, and for each team set who the managers and employees are. Managers approve requests and see the manager tabs.",
+      "empty": "No teams yet. Add a team to get started.",
+      "counts": "{{team}} teams · {{managers}} managers",
       "loading": "Loading users…",
       "loadError": "Failed to load users",
-      "user": "User",
-      "member": "Team",
-      "manager": "Manager",
-      "noMatch": "No users found"
+      "noMatch": "No users found",
+      "addTeam": "Add team",
+      "removeTeam": "Remove team",
+      "namePlaceholder": "Team {{n}}",
+      "managersField": "Managers",
+      "employeesField": "Employees",
+      "managersPlaceholder": "Add managers…",
+      "employeesPlaceholder": "Add employees…"
     },
     "selectColumn": "Select a column…",
     "pickBoardFirst": "Pick a board first to load its columns",

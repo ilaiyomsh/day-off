@@ -60,6 +60,14 @@ export const mondayApi = {
       id: [String(boardId)],
     }),
 
+  /** Owner user ids of a board — used to grant settings access to board owners. */
+  async getBoardOwners(boardId: string | number): Promise<{ id: string }[]> {
+    const data = (await query(`query ($id: [ID!]) { boards(ids: $id) { owners { id } } }`, {
+      id: [String(boardId)],
+    })) as { boards?: { owners?: { id: string | number }[] }[] };
+    return (data.boards?.[0]?.owners ?? []).map((o) => ({ id: String(o.id) }));
+  },
+
   async getAllItems(boardId: string | number, columnIds?: string[]): Promise<unknown[]> {
     const items: unknown[] = [];
     let cursor: string | null = null;

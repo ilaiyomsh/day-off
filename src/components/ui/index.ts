@@ -9,6 +9,7 @@ export * from './Avatar';
 export * from './StatusBadge';
 export * from './TypeChip';
 export * from './EmptyState';
+export * from './PeoplePicker';
 
 // Calendar / modal
 export * from './Modal';

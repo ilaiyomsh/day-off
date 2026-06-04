@@ -9,7 +9,7 @@ import { useDayOffData } from '../../contexts/DayOffDataProvider';
 import { useL10n } from '../../domain/useL10n';
 import { ABSENCE_TYPES } from '../../domain/absence';
 import { workdaysBetween } from '../../domain/dates';
-import type { AbsenceType, CompanyDay, DayOffRequest, RequestStatus } from '../../domain/types';
+import type { AbsenceType, CompanyDay, DayOffRequest } from '../../domain/types';
 import {
   Avatar,
   CalToolbar,
@@ -183,94 +183,7 @@ export function RequestRow({ request, onClick, showEmp }: RequestRowProps) {
         </div>
       </div>
       <StatusBadge status={request.status} />
-      <Icon name="chevron-right" size={18} style={{ color: 'var(--color-text-disabled)' }} />
-    </div>
-  );
-}
-
-/* Requests grouped by STATUS — pending always first, then approved, then rejected.
-   Each request appears exactly once, in its own status group. */
-const STATUS_GROUPS: { status: RequestStatus; labelKey: string }[] = [
-  { status: 'pending', labelKey: 'groups.pending' },
-  { status: 'approved', labelKey: 'groups.approved' },
-  { status: 'rejected', labelKey: 'groups.rejected' },
-];
-
-interface GroupedRequestsProps {
-  requests: DayOffRequest[];
-  onOpenRequest: (request: DayOffRequest) => void;
-  emptyTitle?: string;
-  emptySub?: string;
-}
-
-function GroupedRequests({ requests, onOpenRequest, emptyTitle, emptySub }: GroupedRequestsProps) {
-  if (!requests.length) {
-    return (
-      <div className="card list">
-        <EmptyState icon="calendar" title={emptyTitle} sub={emptySub} />
-      </div>
-    );
-  }
-  // pending sorted soonest-first; settled groups newest-first
-  const byStatus: Record<RequestStatus, DayOffRequest[]> = {
-    pending: requests.filter((r) => r.status === 'pending').slice().sort((a, b) => a.start.localeCompare(b.start)),
-    approved: requests.filter((r) => r.status === 'approved').slice().sort((a, b) => b.start.localeCompare(a.start)),
-    rejected: requests.filter((r) => r.status === 'rejected').slice().sort((a, b) => b.start.localeCompare(a.start)),
-  };
-  return (
-    <>
-      {STATUS_GROUPS.map((g) => {
-        const list = byStatus[g.status];
-        if (!list.length) return null;
-        return (
-          <div key={g.status} className="req-group">
-            <div className="section-title">
-              <span className={`group-tick ${g.status}`} />
-              <GroupLabel labelKey={g.labelKey} /> <span className="count">· {list.length}</span>
-            </div>
-            <div className="card list">
-              {list.map((r) => (
-                <RequestRow key={r.id} request={r} onClick={onOpenRequest} />
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </>
-  );
-}
-
-function GroupLabel({ labelKey }: { labelKey: string }) {
-  const { t } = useL10n();
-  return <>{t(labelKey)}</>;
-}
-
-/* Compact balance line for types without a real annual quota (sick / reserves). */
-interface MiniBalanceProps {
-  empId: string;
-  type: AbsenceType;
-  year: number;
-}
-
-function MiniBalance({ empId, type, year }: MiniBalanceProps) {
-  const { t } = useL10n();
-  const { balanceFor, pendingDaysFor } = useDayOffData();
-  const meta = ABSENCE_TYPES[type];
-  const bal = balanceFor(year, empId, type);
-  const pending = pendingDaysFor(empId, type, year);
-  return (
-    <div className="mini-bal">
-      <span className="mini-dot" style={{ background: meta.color }} />
-      <span className="mini-label">{t(meta.labelKey)}</span>
-      <span className="mini-val">
-        <b>{bal.used}</b> {t('balance.miniDays')}
-        {pending > 0 && (
-          <span className="mini-pending" style={{ color: meta.color }}>
-            {' '}
-            · {t('balance.miniPending', { count: pending })}
-          </span>
-        )}
-      </span>
+      <Icon name="chevron-right" size={18} className="rtl-flip" style={{ color: 'var(--color-text-disabled)' }} />
     </div>
   );
 }
@@ -290,23 +203,16 @@ export function EmployeeView({ onNewRequest, onOpenRequest, onAddOnDay }: Employ
     (r) => Number(r.start.slice(0, 4)) === year || Number(r.end.slice(0, 4)) === year,
   );
 
-  const rail = (
-    <aside className="emp-rail">
-      <div className="rail-title">{t('views.mine.balancesTitle', { year })}</div>
-      <BalanceCard empId={currentUser.id} type="vacation" year={year} />
-      <div className="card mini-balances">
-        <MiniBalance empId={currentUser.id} type="sick" year={year} />
-        <MiniBalance empId={currentUser.id} type="reserves" year={year} />
-      </div>
-    </aside>
-  );
+  // Open (pending) requests first — soonest start first — then the rest, newest first.
+  const pending = inYear.filter((r) => r.status === 'pending').slice().sort((a, b) => a.start.localeCompare(b.start));
+  const settled = inYear.filter((r) => r.status !== 'pending').slice().sort((a, b) => b.start.localeCompare(a.start));
+  const ordered = [...pending, ...settled];
 
   return (
     <div className="page emp-page">
       <div className="page-head">
         <div>
           <h2>{t('views.mine.title')}</h2>
-          <div className="sub">{t('views.mine.sub', { year })}</div>
         </div>
         <div className="head-actions">
           <YearSelect year={year} years={years} onChange={onYearChange} />
@@ -316,6 +222,14 @@ export function EmployeeView({ onNewRequest, onOpenRequest, onAddOnDay }: Employ
         </div>
       </div>
 
+      {/* top statistics — balance per absence type */}
+      <div className="balance-grid">
+        <BalanceCard empId={currentUser.id} type="vacation" year={year} />
+        <BalanceCard empId={currentUser.id} type="sick" year={year} />
+        <BalanceCard empId={currentUser.id} type="reserves" year={year} />
+      </div>
+
+      {/* calendar (right) + requests list (left, ~20%) */}
       <div className="emp-layout">
         <div className="emp-main">
           <CalToolbar {...nav} monthDate={monthDate} />
@@ -327,19 +241,25 @@ export function EmployeeView({ onNewRequest, onOpenRequest, onAddOnDay }: Employ
               if (c.kind === 'absence') onOpenRequest(c.data as DayOffRequest);
             }}
           />
+        </div>
+        <aside className="emp-side">
           <div className="section-head-row">
             <h3 className="block-title">
               {t('views.mine.requestsTitle', { year })} <span className="count">· {inYear.length}</span>
             </h3>
           </div>
-          <GroupedRequests
-            requests={inYear}
-            onOpenRequest={onOpenRequest}
-            emptyTitle={t('views.mine.emptyTitle', { year })}
-            emptySub={t('views.mine.emptySub')}
-          />
-        </div>
-        {rail}
+          {ordered.length ? (
+            <div className="card list">
+              {ordered.map((r) => (
+                <RequestRow key={r.id} request={r} onClick={onOpenRequest} />
+              ))}
+            </div>
+          ) : (
+            <div className="card list">
+              <EmptyState icon="calendar" title={t('views.mine.emptyTitle', { year })} sub={t('views.mine.emptySub')} />
+            </div>
+          )}
+        </aside>
       </div>
     </div>
   );

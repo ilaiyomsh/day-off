@@ -3,12 +3,13 @@
  * Ported from the prototype's TeamView + teamRuns + absenceForCell.
  * Data comes from useDayOffData(); dates/labels via useL10n().
  */
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { Fragment, useEffect, useRef, type CSSProperties } from 'react';
 import { useDayOffData } from '../../contexts/DayOffDataProvider';
 import { useL10n } from '../../domain/useL10n';
 import { ABSENCE_TYPES } from '../../domain/absence';
 import { fromKey, isWeekend, pad, toKey, todayKey } from '../../domain/dates';
 import type { CompanyDay, DayOffRequest } from '../../domain/types';
+import { Tooltip } from '@vibe/core';
 import { Avatar, CalToolbar } from '../ui';
 
 interface TeamViewProps {
@@ -16,16 +17,10 @@ interface TeamViewProps {
 }
 
 export function TeamView({ onOpenRequest }: TeamViewProps) {
-  const { monthDate, nav, requests, teamIds, empById, holidaysOnKey } = useDayOffData();
-  const { t, monthName, dayShort } = useL10n();
-
-  const absenceForCell = (empId: string, dateKey: string) => {
-    const r = requests.find(
-      (x) => x.employeeId === empId && x.status !== 'rejected' && dateKey >= x.start && dateKey <= x.end,
-    );
-    if (!r) return null;
-    return { request: r, type: ABSENCE_TYPES[r.type], isStart: dateKey === r.start, pending: r.status === 'pending' };
-  };
+  const { monthDate, nav, requests, teamIds, myTeams, empById, holidaysOnKey } = useDayOffData();
+  const { t, dayShort } = useL10n();
+  // Group the Gantt by team only when the user belongs to more than one team.
+  const grouped = myTeams.length > 1;
 
   /* Continuous absence segments for one employee within the visible month.
      One entry per request -> renders as a SINGLE bar spanning its days. */
@@ -63,24 +58,75 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
     if (hits.length) holidayByKey[k] = hits[0];
   });
 
-  // who's off today
-  const offToday = teamIds.filter((id) => {
-    const a = absenceForCell(id, tKey);
-    return a && !a.pending;
-  });
-
-  const nameW = 150;
+  const nameW = 210;
   const gridCols = `${nameW}px repeat(${days.length}, minmax(34px, 1fr))`;
 
-  // auto-scroll to center TODAY when the board opens / month changes
+  // One employee row. `groupId` disambiguates keys when a member appears in
+  // more than one team group.
+  const renderRow = (id: string, groupId?: string) => {
+    const emp = empById(id);
+    const runs = teamRuns(id, year, mo);
+    return (
+      <div key={groupId ? `${groupId}:${id}` : id} className="team-row" style={{ gridTemplateColumns: gridCols }}>
+        <div className="team-name" style={{ gridColumn: 1, gridRow: 1 }}>
+          <Avatar emp={emp} size="sm" />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp?.name}</span>
+        </div>
+        {days.map((dt, i) => {
+          const k = toKey(dt);
+          const we = isWeekend(dt);
+          const hol = holidayByKey[k];
+          return (
+            <div
+              key={k}
+              className={`team-cell ${we ? 'weekend' : ''} ${hol ? 'holiday' : ''}`}
+              style={{ gridColumn: i + 2, gridRow: 1 }}
+            />
+          );
+        })}
+        {runs.map((run) => (
+          <Tooltip
+            key={run.request.id}
+            showDelay={0}
+            content={t('views.team.barTitle', {
+              name: emp?.name ?? '',
+              type: t(run.type.labelKey),
+              status: run.pending ? t('status.pending') : t('status.approved'),
+            })}
+          >
+            <div
+              className={`team-bar ${run.pending ? 'pending' : 'approved'}`}
+              style={
+                {
+                  gridColumn: `${run.startDay + 1} / span ${run.endDay - run.startDay + 1}`,
+                  gridRow: 1,
+                  '--c': run.type.color,
+                } as CSSProperties
+              }
+              onClick={() => onOpenRequest(run.request)}
+            >
+              {run.pending && <span className="tb-dot" style={{ background: run.type.color }} />}
+              <span className="tb-label">{t(run.type.labelKey)}</span>
+            </div>
+          </Tooltip>
+        ))}
+      </div>
+    );
+  };
+
+  // auto-scroll to center TODAY when the board opens / month changes.
+  // scrollIntoView is direction-agnostic, so it centers correctly under RTL too
+  // (where scrollLeft/offsetLeft arithmetic differs across browsers).
   const boardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const board = boardRef.current;
     if (!board) return;
     const todayEl = board.querySelector<HTMLElement>('.team-dayhead.today');
-    board.scrollLeft = todayEl
-      ? Math.max(0, todayEl.offsetLeft - board.clientWidth / 2 + todayEl.offsetWidth / 2)
-      : 0;
+    if (todayEl) {
+      todayEl.scrollIntoView({ inline: 'center', block: 'nearest' });
+    } else {
+      board.scrollLeft = 0;
+    }
   }, [monthDate]);
 
   return (
@@ -88,10 +134,6 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
       <div className="page-head">
         <div>
           <h2>{t('views.team.title')}</h2>
-          <div className="sub">
-            {offToday.length ? t('views.team.offToday', { count: offToday.length }) : t('views.team.allPresent')} ·{' '}
-            {monthName(mo)} {year}
-          </div>
         </div>
       </div>
 
@@ -101,7 +143,7 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
         <div className="team-grid">
           {/* header */}
           <div className="team-head-row" style={{ gridTemplateColumns: gridCols }}>
-            <div className="team-corner">{t('views.team.teamCount', { count: teamIds.length })}</div>
+            <div className="team-corner" />
             {days.map((dt) => {
               const k = toKey(dt);
               const we = isWeekend(dt);
@@ -120,52 +162,16 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
             })}
           </div>
           {/* rows */}
-          {teamIds.map((id) => {
-            const emp = empById(id);
-            const runs = teamRuns(id, year, mo);
-            return (
-              <div key={id} className="team-row" style={{ gridTemplateColumns: gridCols }}>
-                <div className="team-name" style={{ gridColumn: 1, gridRow: 1 }}>
-                  <Avatar emp={emp} size="sm" />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp?.name}</span>
-                </div>
-                {days.map((dt, i) => {
-                  const k = toKey(dt);
-                  const we = isWeekend(dt);
-                  const hol = holidayByKey[k];
-                  return (
-                    <div
-                      key={k}
-                      className={`team-cell ${we ? 'weekend' : ''} ${hol ? 'holiday' : ''}`}
-                      style={{ gridColumn: i + 2, gridRow: 1 }}
-                    />
-                  );
-                })}
-                {runs.map((run) => (
-                  <div
-                    key={run.request.id}
-                    className={`team-bar ${run.pending ? 'pending' : 'approved'}`}
-                    style={
-                      {
-                        gridColumn: `${run.startDay + 1} / span ${run.endDay - run.startDay + 1}`,
-                        gridRow: 1,
-                        '--c': run.type.color,
-                      } as CSSProperties
-                    }
-                    title={t('views.team.barTitle', {
-                      name: emp?.name ?? '',
-                      type: t(run.type.labelKey),
-                      status: run.pending ? t('status.pending') : t('status.approved'),
-                    })}
-                    onClick={() => onOpenRequest(run.request)}
-                  >
-                    {run.pending && <span className="tb-dot" style={{ background: run.type.color }} />}
-                    <span className="tb-label">{t(run.type.labelKey)}</span>
+          {grouped
+            ? myTeams.map((tm, i) => (
+                <Fragment key={tm.id}>
+                  <div className="team-group-head" style={{ gridTemplateColumns: gridCols }}>
+                    {tm.name || t('settings.team.namePlaceholder', { n: i + 1 })}
                   </div>
-                ))}
-              </div>
-            );
-          })}
+                  {[...new Set([...tm.managers, ...tm.employees])].map((id) => renderRow(id, tm.id))}
+                </Fragment>
+              ))
+            : teamIds.map((id) => renderRow(id))}
         </div>
       </div>
     </div>

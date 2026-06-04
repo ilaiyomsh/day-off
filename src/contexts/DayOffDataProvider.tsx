@@ -29,6 +29,7 @@ import type {
   Entitlement,
   RequestDraft,
 } from '../domain/types';
+import type { Team } from '../types';
 import { computeBalance, pendingDaysFor as pendingDaysForDomain, requestYear } from '../domain/absence';
 import { todayKey } from '../domain/dates';
 import {
@@ -41,7 +42,8 @@ import {
   deleteCompanyDay as deleteCompanyDayApi,
   type VacationCtx,
 } from '../services/vacationService';
-import { resolveUsers } from '../services/usersService';
+import { getMe, resolveUsers } from '../services/usersService';
+import { mondayApi } from '../services/mondayApi';
 
 type ToastVariant = '' | 'success' | 'danger';
 interface Toast {
@@ -57,9 +59,16 @@ export interface DayOffData {
   entitlements: Entitlement[];
   team: Employee[];
   teamIds: string[];
+  /** All configured teams (every team, not just the current user's). */
+  teams: Team[];
+  /** Teams the signed-in user belongs to (manager or employee). */
+  myTeams: Team[];
+  /** Teams a given employee belongs to — for the team label on a request. */
+  teamsOf: (empId: string) => Team[];
   empById: (id: string) => Employee | undefined;
   currentUser: Employee;
   isManager: boolean;
+  isBoardOwner: boolean;
   years: number[];
   monthDate: Date;
   year: number;
@@ -128,7 +137,38 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
     };
   }, [settings.vacationBoardId, settings.columns, settings.kindValues, settings.typeValues, settings.statusValues]);
 
-  const teamIds = settings.team;
+  // ---- teams + derived role/universe selectors ----
+  const teams = settings.teams;
+  // Every configured member (any team) — resolved into `team` so empById covers
+  // requesters shown in Approvals regardless of which team they're in.
+  const allMemberIds = useMemo(
+    () => [...new Set(teams.flatMap((tm) => [...tm.managers, ...tm.employees]))],
+    [teams],
+  );
+  // Teams the signed-in user belongs to (as manager or employee).
+  const myTeams = useMemo(
+    () => teams.filter((tm) => tm.managers.includes(currentUser.id) || tm.employees.includes(currentUser.id)),
+    [teams, currentUser.id],
+  );
+  // The current user's visible universe (members of their own teams) — drives
+  // the Team view + Dashboard.
+  const teamIds = useMemo(
+    () => [...new Set(myTeams.flatMap((tm) => [...tm.managers, ...tm.employees]))],
+    [myTeams],
+  );
+  const isManager = useMemo(
+    () => teams.some((tm) => tm.managers.includes(currentUser.id)),
+    [teams, currentUser.id],
+  );
+  // Owners of the configured board may always open Settings (mirrors tracker's
+  // useBoardOwner, but the boardId comes from settings — Custom Object apps have
+  // no reliable context.boardId).
+  const [isBoardOwner, setIsBoardOwner] = useState(false);
+  // Teams a given employee belongs to — used for the team label on requests.
+  const teamsOf = useCallback(
+    (empId: string) => teams.filter((tm) => tm.managers.includes(empId) || tm.employees.includes(empId)),
+    [teams],
+  );
 
   // ---- toasts ----
   const toast = useCallback((text: string, variant: ToastVariant = '') => {
@@ -152,17 +192,25 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
   }, [vacCtx]);
 
   const loadTeam = useCallback(async () => {
-    if (!teamIds.length) {
+    if (!allMemberIds.length) {
       setTeam([]);
       return;
     }
-    setTeam(await resolveUsers(teamIds));
-  }, [teamIds]);
+    setTeam(await resolveUsers(allMemberIds));
+  }, [allMemberIds]);
 
   const resolveCurrentUser = useCallback(async () => {
+    // Primary source: the session `me` query — reliable even when monday's
+    // context.user is absent (standalone Custom Object). Fall back to the
+    // context-provided id only if `me` returns nothing.
+    const me = await getMe();
+    if (me) {
+      setCurrentUser(me);
+      return;
+    }
     const id = String(mondayUser.id ?? 'me');
     const name = mondayUser.name ?? '';
-    const [resolved] = await resolveUsers([id]);
+    const [resolved] = id === 'me' ? [] : await resolveUsers([id]);
     setCurrentUser(resolved ?? fallbackEmployee(id, name));
   }, [mondayUser.id, mondayUser.name]);
 
@@ -188,6 +236,30 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
     };
   }, [loadEntries, loadTeam, resolveCurrentUser, handleError]);
 
+  // ---- board-owner check (settings access) ----
+  useEffect(() => {
+    const boardId = settings.vacationBoardId;
+    const userId = currentUser.id;
+    if (!boardId || !userId || userId === 'me') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsBoardOwner(false);
+      return;
+    }
+    let cancelled = false;
+    mondayApi
+      .getBoardOwners(boardId)
+      .then((owners) => {
+        if (!cancelled) setIsBoardOwner(owners.some((o) => o.id === String(userId)));
+      })
+      .catch((err) => {
+        logger.warn('DayOffData', 'getBoardOwners failed', err);
+        if (!cancelled) setIsBoardOwner(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.vacationBoardId, currentUser.id]);
+
   // ---- derived: lookups + selectable years ----
   const empById = useCallback(
     (id: string): Employee | undefined => {
@@ -196,8 +268,6 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
     },
     [team, currentUser],
   );
-
-  const isManager = settings.managers.includes(currentUser.id);
 
   const years = useMemo(() => {
     const set = new Set<number>();
@@ -349,9 +419,13 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
       entitlements,
       team,
       teamIds,
+      teams,
+      myTeams,
+      teamsOf,
       empById,
       currentUser,
       isManager,
+      isBoardOwner,
       years,
       monthDate,
       year,
@@ -377,9 +451,13 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
       entitlements,
       team,
       teamIds,
+      teams,
+      myTeams,
+      teamsOf,
       empById,
       currentUser,
       isManager,
+      isBoardOwner,
       years,
       monthDate,
       year,

@@ -19,10 +19,10 @@ export function CalToolbar({ monthDate, onPrev, onNext, onToday, right }: CalToo
       </button>
       <div className="nav-arrows">
         <button className="nav-btn" onClick={onPrev} aria-label={t('calendar.prevMonth')}>
-          <Icon name="chevron-left" size={20} />
+          <Icon name="chevron-left" size={20} className="rtl-flip" />
         </button>
         <button className="nav-btn" onClick={onNext} aria-label={t('calendar.nextMonth')}>
-          <Icon name="chevron-right" size={20} />
+          <Icon name="chevron-right" size={20} className="rtl-flip" />
         </button>
       </div>
       <span className="cal-label">

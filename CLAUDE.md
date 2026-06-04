@@ -16,7 +16,7 @@ For employees/managers to record and view days off. Writes day-off items to a co
 - React `19.2` · Vite `7.2` · Language: **TypeScript** (standard #2 — new app chose TS)
 - `monday-sdk-js@0.5.7` (client API) · `@mondaycom/apps-cli@4.10.5` (deploy CLI)  *(standard #3)*
 - **`@axis/app-core`** (`file:../Services/axis-app-core`) — startup, MondayContext, settings module, logger, error pipeline (standard #17). Wired in `src/core.ts`.
-- `i18next` + `react-i18next`. UI on `@vibe/core` (to be added as components land).
+- `i18next` + `react-i18next`. `@vibe/core` + `@vibe/icons` (added for the `PeoplePicker`; tokens imported in `main.tsx`).
 
 ## 4. Constants
 - **No hardcoded board IDs** — board/column targeting is in Settings (`DayOffSettings`).

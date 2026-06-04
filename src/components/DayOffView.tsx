@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../core';
 import { useDayOffData } from '../contexts/DayOffDataProvider';
-import { Avatar, Icon } from './ui';
+import { Icon } from './ui';
 import { EmployeeView } from './views/EmployeeView';
 import { TeamView } from './views/TeamView';
 import { ApprovalsView } from './views/ApprovalsView';
@@ -35,14 +35,14 @@ interface TabDef {
 const TABS: { employee: TabDef[]; manager: TabDef[] } = {
   employee: [
     { id: 'mine', labelKey: 'tabs.mine', icon: 'user' },
-    { id: 'team', labelKey: 'tabs.team', icon: 'users' },
   ],
+  // RTL: first entry renders rightmost. Right→left: mine | approvals | team | company | dashboard.
   manager: [
-    { id: 'dashboard', labelKey: 'tabs.dashboard', icon: 'chart' },
-    { id: 'approvals', labelKey: 'tabs.approvals', icon: 'inbox' },
     { id: 'mine', labelKey: 'tabs.mine', icon: 'user' },
+    { id: 'approvals', labelKey: 'tabs.approvals', icon: 'inbox' },
     { id: 'team', labelKey: 'tabs.team', icon: 'users' },
     { id: 'company', labelKey: 'tabs.company', icon: 'calendar' },
+    { id: 'dashboard', labelKey: 'tabs.dashboard', icon: 'chart' },
   ],
 };
 
@@ -61,6 +61,7 @@ export function DayOffView() {
   const {
     currentUser,
     isManager,
+    isBoardOwner,
     toasts,
     requests,
     year,
@@ -156,18 +157,16 @@ export function DayOffView() {
           </div>
         </div>
 
-        <div className="persona">
-          <button className="persona-btn" onClick={() => setSettingsOpen(true)}>
-            <Avatar emp={currentUser} />
-            <div className="persona-meta">
-              <span className="persona-name">{currentUser.name}</span>
-              <span className="persona-role">
-                {isManager ? t('app.managerView') : t('app.employeeView')}
-              </span>
-            </div>
-            <Icon name="info" size={16} style={{ color: 'var(--color-text-secondary)' }} />
+        {(isManager || isBoardOwner) && (
+          <button
+            className="settings-btn"
+            onClick={() => setSettingsOpen(true)}
+            aria-label={t('settings.open')}
+            title={t('settings.open')}
+          >
+            <Icon name="settings" size={20} />
           </button>
-        </div>
+        )}
       </header>
 
       {/* tabs */}
