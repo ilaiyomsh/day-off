@@ -4,7 +4,7 @@
  * ApprovalsView in views.jsx. Reuses RequestRow from EmployeeView, the useDayOffData()
  * data hook, and useL10n() for date formatting.
  */
-import { Avatar, EmptyState, Icon, Rng } from '../ui';
+import { Avatar, Icon, Rng } from '../ui';
 import { ABSENCE_TYPES } from '../../domain/absence';
 import { workdaysBetween } from '../../domain/dates';
 import { useL10n } from '../../domain/useL10n';
@@ -51,11 +51,9 @@ export function ApprovalsView({
       <div className="page-head">
         <div>
           <h2>{t('views.approvals.title')}</h2>
-          <div className="sub">
-            {pending.length
-              ? t('views.approvals.pendingCount', { count: pending.length })
-              : t('views.approvals.noPending')}
-          </div>
+          {pending.length > 0 && (
+            <div className="sub">{t('views.approvals.pendingCount', { count: pending.length })}</div>
+          )}
         </div>
         {pending.length > 0 && (
           <button className="btn btn-approve" onClick={onApproveAll}>
@@ -118,7 +116,7 @@ export function ApprovalsView({
             );
           })
         ) : (
-          <EmptyState title={t('views.approvals.emptyTitle')} sub={t('views.approvals.emptySub')} />
+          <div className="list-empty">{t('views.approvals.emptySub')}</div>
         )}
       </div>
 

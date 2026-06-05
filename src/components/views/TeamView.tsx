@@ -6,7 +6,7 @@
 import { Fragment, useEffect, useRef, type CSSProperties } from 'react';
 import { useDayOffData } from '../../contexts/DayOffDataProvider';
 import { useL10n } from '../../domain/useL10n';
-import { ABSENCE_TYPES } from '../../domain/absence';
+import { ABSENCE_TYPES, TYPE_ORDER } from '../../domain/absence';
 import { fromKey, isWeekend, pad, toKey, todayKey } from '../../domain/dates';
 import type { CompanyDay, DayOffRequest } from '../../domain/types';
 import { Tooltip } from '@vibe/core';
@@ -139,6 +139,19 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
 
       <CalToolbar {...nav} monthDate={monthDate} />
 
+      <div className="team-legend">
+        {TYPE_ORDER.map((tid) => (
+          <span className="legend-item" key={tid}>
+            <span className="legend-swatch" style={{ background: ABSENCE_TYPES[tid].color }} />
+            {t(ABSENCE_TYPES[tid].labelKey)}
+          </span>
+        ))}
+        <span className="legend-item">
+          <span className="legend-swatch legend-swatch--pending" />
+          {t('status.pending')}
+        </span>
+      </div>
+
       <div className="card team-board" ref={boardRef}>
         <div className="team-grid">
           {/* header */}
@@ -165,8 +178,10 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
           {grouped
             ? myTeams.map((tm, i) => (
                 <Fragment key={tm.id}>
-                  <div className="team-group-head" style={{ gridTemplateColumns: gridCols }}>
-                    {tm.name || t('settings.team.namePlaceholder', { n: i + 1 })}
+                  <div className="team-group-head">
+                    <span className="tgh-label">
+                      {tm.name || t('settings.team.namePlaceholder', { n: i + 1 })}
+                    </span>
                   </div>
                   {[...new Set([...tm.managers, ...tm.employees])].map((id) => renderRow(id, tm.id))}
                 </Fragment>

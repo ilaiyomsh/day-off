@@ -570,7 +570,11 @@ button { font-family: inherit; }
 .cal-cell.today .cell-num { background: var(--color-primary); color: #fff; font-weight: var(--font-weight-semibold); }
 .cell-add {
   opacity: 0;
-  width: 20px; height: 20px;
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 30%; height: auto;
+  aspect-ratio: 1;
   border-radius: 50%;
   border: none;
   background: var(--color-bg-neutral);
@@ -684,11 +688,34 @@ button { font-family: inherit; }
   padding: var(--spacing-3xl);
   color: var(--color-text-tertiary);
 }
+/* Compact inline empty state — sized to a single list row, text only. */
+.list-empty {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 58px; padding: var(--spacing-md) var(--spacing-lg);
+  color: var(--color-text-tertiary); font-size: 13.5px;
+}
 .empty svg { color: var(--color-border-medium); margin-bottom: var(--spacing-md); }
 .empty .empty-title { font-size: 15px; font-weight: var(--font-weight-semibold); color: var(--color-text-secondary); margin-bottom: 4px; }
 .empty .empty-sub { font-size: 13px; }
 
 /* ---------- Team board ---------- */
+.team-legend {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: var(--spacing-sm) var(--spacing-lg);
+  padding: var(--spacing-sm) 2px var(--spacing-md);
+}
+.team-legend .legend-item {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12.5px; color: var(--color-text-secondary);
+}
+.team-legend .legend-swatch {
+  width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0;
+}
+.team-legend .legend-swatch--pending {
+  background: var(--color-bg-primary);
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+  background-image: repeating-linear-gradient(45deg, color-mix(in srgb, var(--color-border-strong) 32%, transparent) 0 4px, transparent 4px 8px);
+}
 .team-board { overflow-x: auto; }
 .team-grid { display: grid; min-width: 820px; }
 .team-corner, .team-dayhead, .team-name, .team-cell { border-inline-start: 1px solid var(--color-border-separator); border-bottom: 1px solid var(--color-border-separator); }
@@ -872,6 +899,16 @@ button { font-family: inherit; }
   text-decoration: none; cursor: pointer;
 }
 .file-link:hover { text-decoration: underline; }
+.file-attach-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: var(--radius-full);
+  border: 1px solid var(--color-border-strong); background: var(--color-bg-primary);
+  color: var(--color-primary); font-weight: var(--font-weight-semibold);
+  font-size: 12.5px; cursor: pointer;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+.file-attach-btn:hover:not(:disabled) { background: var(--color-bg-subtle); border-color: var(--color-primary); }
+.file-attach-btn:disabled { opacity: 0.6; cursor: default; }
 
 .toggle-row {
   display: flex; align-items: center; justify-content: space-between;
@@ -895,11 +932,28 @@ button { font-family: inherit; }
   border: 1px solid var(--color-info-border);
   border-radius: var(--radius-input);
   padding: var(--spacing-md) var(--spacing-lg);
-  display: flex; align-items: center; gap: var(--spacing-md);
-  font-size: 13.5px; color: var(--color-text-dark);
+  display: flex; align-items: stretch; flex-wrap: wrap;
+  gap: var(--spacing-md) var(--spacing-lg);
+  color: var(--color-text-dark);
 }
-.summary b { color: var(--color-text-on-dark); }
-.summary .summary-num { font-size: 22px; font-weight: var(--font-weight-bold); color: var(--color-primary); }
+.summary-stat {
+  display: flex; flex-direction: column; gap: 2px;
+  justify-content: center;
+}
+.summary-val {
+  font-size: 15px; font-weight: var(--font-weight-semibold);
+  line-height: 1.2; color: var(--color-text-on-dark);
+}
+.summary-val.summary-num { font-size: 22px; font-weight: var(--font-weight-bold); }
+.summary-label {
+  font-size: 11.5px; font-weight: var(--font-weight-medium);
+  color: var(--color-text-dark); opacity: 0.7;
+}
+.summary-sep {
+  align-self: stretch;
+  width: 1px; min-height: 28px;
+  background: var(--color-info-border);
+}
 .warn-box {
   background: var(--color-warning-bg-light);
   border: 1px solid var(--color-warning-border);
@@ -1211,8 +1265,23 @@ button { font-family: inherit; }
 .emp-main { min-width: 0; }
 .emp-side { min-width: 0; display: flex; flex-direction: column; }
 .emp-side .section-head-row { margin-top: 0; }
-/* compact rows for the narrow side list */
-.emp-side .list-row { padding-inline: var(--spacing-md); }
+/* compact rows for the narrow side list — grid so the status badge sits on its
+   own line below the dates (the row is too narrow for an all-horizontal flow). */
+.emp-side .list-row {
+  display: grid;
+  grid-template-columns: 4px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "bar main chev"
+    "bar status chev";
+  align-items: center;
+  column-gap: var(--spacing-sm);
+  row-gap: 6px;
+  padding-inline: var(--spacing-md);
+}
+.emp-side .list-row > .row-bar { grid-area: bar; }
+.emp-side .list-row > .row-main { grid-area: main; }
+.emp-side .list-row > .status { grid-area: status; justify-self: start; }
+.emp-side .list-row > .rtl-flip { grid-area: chev; }
 .emp-side .row-meta { flex-wrap: wrap; row-gap: 2px; }
 .section-head-row { display: flex; align-items: center; justify-content: space-between; margin: 0 0 var(--spacing-sm); }
 .block-title { margin: 0; font-size: 16px; font-weight: var(--font-weight-semibold); color: var(--color-text-on-dark); letter-spacing: -0.2px; }
@@ -1323,9 +1392,15 @@ button { font-family: inherit; }
 
 /* Team group header inside the Team-view Gantt (only when >1 team). */
 .team-group-head {
-  grid-column: 1 / -1; padding: 8px 12px; font-size: 13px; font-weight: var(--font-weight-semibold);
+  grid-column: 1 / -1; font-size: 13px; font-weight: var(--font-weight-semibold);
   color: var(--color-text); background: var(--color-bg-tertiary);
-  border-bottom: 1px solid var(--color-border-separator); position: sticky; inset-inline-start: 0;
+  border-bottom: 1px solid var(--color-border-separator);
+}
+/* Full-width bar scrolls; the label is a narrow sticky pinned to the start
+   edge so the team name stays in the fixed right (RTL) column on h-scroll. */
+.tgh-label {
+  display: inline-block; padding: 8px 12px;
+  position: sticky; inset-inline-start: 0; z-index: 6;
 }
 
 /* Team label next to a requester's name in Approvals. */

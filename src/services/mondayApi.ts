@@ -109,6 +109,20 @@ export const mondayApi = {
   deleteItem: (itemId: string | number) =>
     query(`mutation ($id: ID!) { delete_item(item_id: $id) { id } }`, { id: String(itemId) }),
 
+  /**
+   * Upload a file to a file-type column on an item. Relies on monday's seamless
+   * auth: when a `File` is passed as a variable, the platform auto-translates the
+   * request to a multipart upload (View apps only). The File is passed through the
+   * query funnel untouched (not JSON-stringified).
+   */
+  addFileToColumn: (itemId: string | number, columnId: string, file: File) =>
+    query(
+      `mutation ($itemId: ID!, $columnId: String!, $file: File!) {
+         add_file_to_column(item_id: $itemId, column_id: $columnId, file: $file) { id }
+       }`,
+      { itemId: String(itemId), columnId, file },
+    ),
+
   // Global storage keyed by instanceId (matches the Axis convention — see SettingsContext).
   storageGet: (key: string) => monday.storage.getItem(key),
   storageSet: (key: string, value: string) => monday.storage.setItem(key, value),

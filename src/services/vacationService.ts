@@ -9,8 +9,9 @@
  * (the yearly-quota concept was removed). All monday I/O goes through `mondayApi`;
  * pure (de)serialization lives in columnMap.ts. Every catch logs/throws.
  *
- * NOTE: file UPLOAD for new attachments stays out of scope (needs monday's
- * multipart endpoint). Existing file assets are parsed on read only.
+ * File attachments upload via monday's seamless multipart translation: a `File`
+ * passed as a GraphQL variable to `add_file_to_column` is auto-converted to a
+ * multipart request by the platform (View apps). See mondayApi.addFileToColumn.
  */
 import { mondayApi } from './mondayApi';
 import { logger } from '../core';
@@ -225,10 +226,11 @@ export async function createRequest(ctx: VacationCtx, employeeId: string, draft:
     if (cols.personColumnId) columns[cols.personColumnId] = formatPeople([employeeId]);
     if (cols.kindColumnId && kindValues.personal) columns[cols.kindColumnId] = formatStatusLabel(kindValues.personal);
     if (cols.approvalStatusColumnId) columns[cols.approvalStatusColumnId] = formatStatusLabel(statusValues.pending);
-    if (draft.attachment) {
-      logger.info('vacationService', 'attachment on create — skipping upload (v1 out of scope)', { name: draft.attachment.name });
+    const created = (await mondayApi.createItem(ctx.boardId, itemName, columns)) as { create_item?: { id?: string } };
+    const newId = created?.create_item?.id;
+    if (draft.attachment?.file && cols.fileColumnId && newId) {
+      await mondayApi.addFileToColumn(newId, cols.fileColumnId, draft.attachment.file);
     }
-    await mondayApi.createItem(ctx.boardId, itemName, columns);
   } catch (err) {
     logger.error('vacationService', 'createRequest failed', err);
     throw err;
@@ -240,12 +242,27 @@ export async function updateRequest(ctx: VacationCtx, id: string, draft: Request
   try {
     const columns = requestDraftColumns(ctx, draft);
     if (cols.approvalStatusColumnId) columns[cols.approvalStatusColumnId] = formatStatusLabel(statusValues.pending);
-    if (draft.attachment) {
-      logger.info('vacationService', 'attachment on update — skipping upload (v1 out of scope)', { name: draft.attachment.name });
-    }
     await mondayApi.updateMultipleColumnValues(ctx.boardId, id, columns);
+    if (draft.attachment?.file && cols.fileColumnId) {
+      await mondayApi.addFileToColumn(id, cols.fileColumnId, draft.attachment.file);
+    }
   } catch (err) {
     logger.error('vacationService', 'updateRequest failed', err);
+    throw err;
+  }
+}
+
+/**
+ * Attach a document to an existing request item (any status — e.g. adding a sick
+ * note to an already-approved request). Requires a configured file column.
+ */
+export async function uploadAttachment(ctx: VacationCtx, itemId: string, file: File): Promise<void> {
+  const { cols } = ctx;
+  if (!cols.fileColumnId) throw new Error('No file column configured for the requests board');
+  try {
+    await mondayApi.addFileToColumn(itemId, cols.fileColumnId, file);
+  } catch (err) {
+    logger.error('vacationService', 'uploadAttachment failed', err);
     throw err;
   }
 }

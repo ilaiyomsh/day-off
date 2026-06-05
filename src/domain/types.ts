@@ -14,6 +14,9 @@ export interface Attachment {
   size?: number;
   /** Object URL for a freshly-picked local file, or a monday asset URL. */
   url?: string;
+  /** The raw picked File — present only for a not-yet-uploaded local pick; used
+   * to perform the monday `add_file_to_column` upload. Absent for read assets. */
+  file?: File;
 }
 
 /** One absence request = one item on the requests board. */

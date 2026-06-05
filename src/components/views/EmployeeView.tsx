@@ -116,7 +116,6 @@ function BalanceCard({ empId, type, year }: BalanceCardProps) {
             <div className="fill used" style={{ width: bal.used ? '100%' : '0%' }} />
           </div>
           <div className="balance-legend">
-            <span>{t('balance.noQuota')}</span>
             {pending > 0 && (
               <span className="bl-pending" style={{ color: meta.color }}>
                 {t('balance.pending')} <b>{pending}</b>
@@ -217,7 +216,7 @@ export function EmployeeView({ onNewRequest, onOpenRequest, onAddOnDay }: Employ
         <div className="head-actions">
           <YearSelect year={year} years={years} onChange={onYearChange} />
           <button className="btn btn-primary" onClick={() => onNewRequest()}>
-            <Icon name="plus" size={17} strokeWidth={2} /> {t('views.mine.newRequest')}
+            {t('views.mine.newRequest')}
           </button>
         </div>
       </div>

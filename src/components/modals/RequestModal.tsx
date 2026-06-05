@@ -43,7 +43,7 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit }: Reques
 
   function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files && e.target.files[0];
-    if (f) setAttachment({ name: f.name, size: f.size, url: URL.createObjectURL(f) });
+    if (f) setAttachment({ name: f.name, size: f.size, url: URL.createObjectURL(f), file: f });
     e.target.value = '';
   }
 
@@ -84,7 +84,7 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit }: Reques
               onSubmit({ type, start, end, note: note.trim(), attachment: attachment || undefined })
             }
           >
-            <Icon name="check" size={16} /> {t('request.submit')}
+            {t('request.submit')}
           </button>
         </>
       }
@@ -141,20 +141,31 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit }: Reques
 
       {valid && (
         <div className="summary">
-          <span className="summary-num" style={{ color: tt.color }}>
-            {workdays}
-          </span>
-          <span>
-            <b>{t('request.summaryWorkdays')}</b> {t('request.summaryCalDays', { count: calDays })} ·{' '}
-            {fmtRange(start, end)}
-            {type !== 'sick' && type !== 'reserves' && remaining != null && (
-              <>
-                {' '}
-                · {t('request.summaryRemaining')} <b>{remaining - workdays}</b>{' '}
-                {t('request.summaryRemainingDays')}
-              </>
-            )}
-          </span>
+          <div className="summary-stat">
+            <span className="summary-val summary-num" style={{ color: tt.color }}>
+              {workdays}
+            </span>
+            <span className="summary-label">{t('request.summaryWorkdays')}</span>
+          </div>
+          <span className="summary-sep" aria-hidden="true" />
+          <div className="summary-stat">
+            <span className="summary-val">{calDays}</span>
+            <span className="summary-label">{t('request.summaryCalDaysLabel')}</span>
+          </div>
+          <span className="summary-sep" aria-hidden="true" />
+          <div className="summary-stat">
+            <span className="summary-val">{fmtRange(start, end)}</span>
+            <span className="summary-label">{t('request.summaryDatesLabel')}</span>
+          </div>
+          {type !== 'sick' && type !== 'reserves' && remaining != null && (
+            <>
+              <span className="summary-sep" aria-hidden="true" />
+              <div className="summary-stat">
+                <span className="summary-val">{remaining - workdays}</span>
+                <span className="summary-label">{t('request.summaryRemaining')}</span>
+              </div>
+            </>
+          )}
         </div>
       )}
 

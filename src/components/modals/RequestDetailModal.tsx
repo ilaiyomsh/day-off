@@ -3,6 +3,7 @@
  * cards (employee + manager), and manager/employee footer actions.
  * Ported from the prototype's RequestDetailModal (modals.jsx).
  */
+import { useRef, useState } from 'react';
 import { Avatar, Icon, Modal, Rng, StatusBadge, TypeChip } from '../ui';
 import { ABSENCE_TYPES } from '../../domain/absence';
 import { workdaysBetween } from '../../domain/dates';
@@ -38,7 +39,24 @@ export function RequestDetailModal({
   onEdit,
 }: RequestDetailModalProps) {
   const { t, fmtDate, relDays } = useL10n();
-  const { empById } = useDayOffData();
+  const { empById, canAttachDocuments, attachDocument } = useDayOffData();
+
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [justUploaded, setJustUploaded] = useState(false);
+
+  async function onPickAndUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    setUploading(true);
+    try {
+      await attachDocument(request, f);
+      setJustUploaded(true);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   const emp = empById(request.employeeId);
   const meta = ABSENCE_TYPES[request.type];
@@ -138,6 +156,29 @@ export function RequestDetailModal({
           <div className="detail-row">
             <span className="dl">{request.status === 'approved' ? t('detail.decidedByApproved') : t('detail.decidedByRejected')}</span>
             <span className="dv">{decidedBy.name}</span>
+          </div>
+        )}
+        {canAttachDocuments && (
+          <div className="detail-row">
+            <span className="dl">{t('detail.attachDocument')}</span>
+            <span className="dv">
+              <input ref={fileRef} type="file" hidden onChange={onPickAndUpload} />
+              <button
+                type="button"
+                className="file-attach-btn"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+              >
+                <Icon name="paperclip" size={14} />
+                {uploading
+                  ? t('detail.uploading')
+                  : justUploaded
+                    ? t('detail.uploaded')
+                    : request.attachment
+                      ? t('detail.replaceDocument')
+                      : t('detail.attachDocument')}
+              </button>
+            </span>
           </div>
         )}
       </div>

@@ -38,6 +38,7 @@ import {
   updateRequest,
   setStatus,
   deleteRequest,
+  uploadAttachment,
   saveCompanyDay as saveCompanyDayApi,
   deleteCompanyDay as deleteCompanyDayApi,
   type VacationCtx,
@@ -82,6 +83,10 @@ export interface DayOffData {
   reject: (r: DayOffRequest, reason?: string) => Promise<void>;
   approveAll: () => Promise<void>;
   cancelRequest: (r: DayOffRequest) => Promise<void>;
+  /** Upload a document to an existing request (any status). */
+  attachDocument: (r: DayOffRequest, file: File) => Promise<void>;
+  /** True when the requests board has a file column configured (upload enabled). */
+  canAttachDocuments: boolean;
   saveCompanyDay: (draft: CompanyDayDraft) => Promise<void>;
   deleteCompanyDay: (h: CompanyDay) => Promise<void>;
   toasts: Toast[];
@@ -384,6 +389,21 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
     [loadEntries, toast, t, handleError],
   );
 
+  const attachDocument = useCallback(
+    async (r: DayOffRequest, file: File) => {
+      if (!vacCtx) return;
+      try {
+        await uploadAttachment(vacCtx, r.id, file);
+        await loadEntries();
+        toast(t('toasts.documentAttached'), 'success');
+      } catch (err) {
+        handleError(err, { operation: 'DayOffData.attachDocument' });
+      }
+    },
+    [vacCtx, loadEntries, toast, t, handleError],
+  );
+  const canAttachDocuments = !!vacCtx?.cols.fileColumnId;
+
   const saveCompanyDay = useCallback(
     async (draft: CompanyDayDraft) => {
       if (!vacCtx) return;
@@ -439,6 +459,8 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
       reject,
       approveAll,
       cancelRequest,
+      attachDocument,
+      canAttachDocuments,
       saveCompanyDay,
       deleteCompanyDay,
       toasts,
@@ -471,6 +493,8 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
       reject,
       approveAll,
       cancelRequest,
+      attachDocument,
+      canAttachDocuments,
       saveCompanyDay,
       deleteCompanyDay,
       toasts,
