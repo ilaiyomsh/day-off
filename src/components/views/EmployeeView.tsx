@@ -1,13 +1,13 @@
 /* ============================================================
-   Day Off — Employee view ("My absences"). Ported from the prototype's
-   EmployeeView (+ BalanceCard, MiniBalance, RequestRow, GroupedRequests).
-   Data comes from useDayOffData(); dates via useL10n(). The layout toggle
-   was removed — the calendar is always shown above the grouped list.
+   Day Off — Employee view ("My absences"). Layout: month calendar on the
+   right (top-aligned); left column holds per-type absence-day stats on top
+   (StatCard — days this month + this year, no quota) and the date-sorted
+   request list below (pending first). Data via useDayOffData(); dates via useL10n().
    ============================================================ */
-import { type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useDayOffData } from '../../contexts/DayOffDataProvider';
 import { useL10n } from '../../domain/useL10n';
-import { ABSENCE_TYPES } from '../../domain/absence';
+import { ABSENCE_TYPES, TYPE_ORDER, reqWorkdayKeysInYear } from '../../domain/absence';
 import { workdaysBetween } from '../../domain/dates';
 import type { AbsenceType, CompanyDay, DayOffRequest } from '../../domain/types';
 import {
@@ -55,75 +55,41 @@ function myChipsFor(
   return chips;
 }
 
-interface BalanceCardProps {
+type StatScope = 'month' | 'year';
+
+interface StatCardProps {
   empId: string;
   type: AbsenceType;
   year: number;
+  monthDate: Date;
+  scope: StatScope;
 }
 
-function BalanceCard({ empId, type, year }: BalanceCardProps) {
+/** Compact per-type absence-day counter — one number for the selected scope (no quota). */
+function StatCard({ empId, type, year, monthDate, scope }: StatCardProps) {
   const { t } = useL10n();
-  const { balanceFor, pendingDaysFor } = useDayOffData();
+  const { requests, pendingDaysFor } = useDayOffData();
   const meta = ABSENCE_TYPES[type];
-  const bal = balanceFor(year, empId, type);
+  const monthPrefix = `${year}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+
+  // Count non-rejected workdays of this type within the selected year (clipped),
+  // narrowing to the displayed month when the scope is 'month'.
+  let days = 0;
+  for (const r of requests) {
+    if (r.employeeId !== empId || r.type !== type || r.status === 'rejected') continue;
+    const keys = reqWorkdayKeysInYear(r, year);
+    days += scope === 'month' ? keys.filter((k) => k.startsWith(monthPrefix)).length : keys.length;
+  }
   const pending = pendingDaysFor(empId, type, year);
-  const hasQuota = bal.entitled > 0;
-  const remaining = bal.entitled - bal.used;
-  const pct = hasQuota ? Math.min(100, (bal.used / bal.entitled) * 100) : 0;
+
   return (
-    <div className="balance-card" style={{ '--accent': meta.color } as CSSProperties}>
-      <div className="balance-top">
+    <div className="stat-card" style={{ '--accent': meta.color } as CSSProperties}>
+      {pending > 0 && <span className="stat-pending-dot" title={t('stats.pending', { count: pending })} />}
+      <span className="stat-num">{days}</span>
+      <span className="stat-top">
         <span className="balance-dot" style={{ background: meta.color }} />
-        <span className="balance-title">{t(meta.labelKey)}</span>
-      </div>
-      {hasQuota ? (
-        <>
-          <div className="balance-figures">
-            <span className="balance-remaining">{remaining}</span>
-            <span className="balance-of">{t('balance.of', { count: bal.entitled })}</span>
-          </div>
-          <div className="balance-meter">
-            <div className="fill used" style={{ width: pct + '%' }} />
-            {pending > 0 && (
-              <div
-                className="fill pending"
-                style={{ width: Math.min(100 - pct, (pending / bal.entitled) * 100) + '%', background: meta.color }}
-              />
-            )}
-          </div>
-          <div className="balance-legend">
-            <span>
-              {t('balance.used')} <b>{bal.used}</b>
-            </span>
-            {pending > 0 ? (
-              <span className="bl-pending" style={{ color: meta.color }}>
-                {t('balance.pending')} <b>{pending}</b>
-              </span>
-            ) : (
-              <span>
-                {t('balance.remaining')} <b>{remaining}</b>
-              </span>
-            )}
-          </div>
-        </>
-      ) : (
-        <>
-          <div className="balance-figures">
-            <span className="balance-remaining">{bal.used}</span>
-            <span className="balance-of">{t('balance.daysThisYear')}</span>
-          </div>
-          <div className="balance-meter">
-            <div className="fill used" style={{ width: bal.used ? '100%' : '0%' }} />
-          </div>
-          <div className="balance-legend">
-            {pending > 0 && (
-              <span className="bl-pending" style={{ color: meta.color }}>
-                {t('balance.pending')} <b>{pending}</b>
-              </span>
-            )}
-          </div>
-        </>
-      )}
+        <span className="stat-title">{t(meta.labelKey)}</span>
+      </span>
     </div>
   );
 }
@@ -196,6 +162,7 @@ interface EmployeeViewProps {
 export function EmployeeView({ onNewRequest, onOpenRequest, onAddOnDay }: EmployeeViewProps) {
   const { t } = useL10n();
   const { currentUser, monthDate, nav, year, years, onYearChange, requests, holidaysOnKey } = useDayOffData();
+  const [scope, setScope] = useState<StatScope>('month');
 
   const mine = requests.filter((r) => r.employeeId === currentUser.id);
   const inYear = mine.filter(
@@ -221,14 +188,7 @@ export function EmployeeView({ onNewRequest, onOpenRequest, onAddOnDay }: Employ
         </div>
       </div>
 
-      {/* top statistics — balance per absence type */}
-      <div className="balance-grid">
-        <BalanceCard empId={currentUser.id} type="vacation" year={year} />
-        <BalanceCard empId={currentUser.id} type="sick" year={year} />
-        <BalanceCard empId={currentUser.id} type="reserves" year={year} />
-      </div>
-
-      {/* calendar (right) + requests list (left, ~20%) */}
+      {/* calendar (right, top-aligned) + left column: stats on top, requests below */}
       <div className="emp-layout">
         <div className="emp-main">
           <CalToolbar {...nav} monthDate={monthDate} />
@@ -242,10 +202,39 @@ export function EmployeeView({ onNewRequest, onOpenRequest, onAddOnDay }: Employ
           />
         </div>
         <aside className="emp-side">
+          {/* top-left: per-type absence-day stats — one compact card per type,
+              scope toggled between the displayed month and the whole year (no quota) */}
+          <div className="stats-block">
+            <div className="stats-scope" role="tablist">
+              <button
+                type="button"
+                role="tab"
+                aria-selected={scope === 'month'}
+                className={scope === 'month' ? 'active' : ''}
+                onClick={() => setScope('month')}
+              >
+                {t('stats.thisMonth')}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={scope === 'year'}
+                className={scope === 'year' ? 'active' : ''}
+                onClick={() => setScope('year')}
+              >
+                {t('stats.thisYear')}
+              </button>
+            </div>
+            <div className="stats-row">
+              {TYPE_ORDER.map((type) => (
+                <StatCard key={type} empId={currentUser.id} type={type} year={year} monthDate={monthDate} scope={scope} />
+              ))}
+            </div>
+          </div>
+
+          {/* bottom-left: requests sorted by date, pending first */}
           <div className="section-head-row">
-            <h3 className="block-title">
-              {t('views.mine.requestsTitle', { year })} <span className="count">· {inYear.length}</span>
-            </h3>
+            <h3 className="block-title">{t('views.mine.requests')}</h3>
           </div>
           {ordered.length ? (
             <div className="card list">

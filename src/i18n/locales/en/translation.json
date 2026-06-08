@@ -124,6 +124,7 @@
       "newRequest": "New request",
       "balancesTitle": "{{year}} balances",
       "requestsTitle": "{{year}} requests",
+      "requests": "Requests",
       "emptyTitle": "No absences in {{year}}",
       "emptySub": "Add a request to plan a vacation"
     },
@@ -223,6 +224,12 @@
     "noQuota": "No annual quota",
     "miniDays": "days",
     "miniPending": "{{count}} pending"
+  },
+  "stats": {
+    "title": "Absence days",
+    "thisMonth": "This month",
+    "thisYear": "This year",
+    "pending": "{{count}} pending"
   },
   "request": {
     "newTitle": "New absence request",

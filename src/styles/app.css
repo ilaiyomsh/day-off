@@ -447,6 +447,8 @@ button { font-family: inherit; }
 
 /* LTR-isolated date range: earlier date left, later date right, regardless of script */
 .ltr-range { direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+/* date range that follows ambient direction; numeric groups isolated inside Rng */
+.date-range { white-space: nowrap; }
 
 /* ---------- Calendar grid ---------- */
 .calendar {
@@ -1259,29 +1261,80 @@ button { font-family: inherit; }
 .group-tick.approved { background: var(--color-approval-green); }
 .group-tick.rejected { background: var(--color-danger); }
 
-/* (1) My absences — top stats (.balance-grid), then calendar (right) + requests list (left ~20%) */
+/* (1) My absences — calendar (right, top-aligned) + left column: stats on top, requests below */
 .emp-page { max-width: 1280px; }
-.emp-layout { display: grid; grid-template-columns: minmax(0, 1fr) 20%; gap: var(--spacing-xl); align-items: start; }
+.emp-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--spacing-3xl); align-items: start; }
 .emp-main { min-width: 0; }
 .emp-side { min-width: 0; display: flex; flex-direction: column; }
 .emp-side .section-head-row { margin-top: 0; }
-/* compact rows for the narrow side list — grid so the status badge sits on its
-   own line below the dates (the row is too narrow for an all-horizontal flow). */
+
+/* per-type absence-day stats (top-left): compact cards, one number each,
+   scope toggled between the displayed month and the whole year (no quota) */
+.stats-block { margin-bottom: var(--spacing-lg); }
+.stats-scope {
+  display: inline-flex;
+  padding: 3px;
+  margin-bottom: var(--spacing-sm);
+  background: var(--color-bg-neutral);
+  border-radius: var(--radius-full);
+}
+.stats-scope button {
+  border: 0;
+  background: transparent;
+  padding: 4px 14px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+.stats-scope button.active {
+  background: var(--color-bg-primary);
+  color: var(--color-text-on-dark);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--shadow-xs);
+}
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--spacing-sm); }
+.stat-card {
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius-card);
+  padding: var(--spacing-md) var(--spacing-sm);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+.stat-num { font-size: 26px; font-weight: var(--font-weight-bold); color: var(--color-text-on-dark); line-height: 1; letter-spacing: -0.5px; }
+.stat-top { display: flex; align-items: center; gap: 5px; }
+.stat-title { font-size: 12px; font-weight: var(--font-weight-medium); color: var(--color-text-secondary); }
+.stat-pending-dot {
+  position: absolute;
+  inset-block-start: 7px;
+  inset-inline-end: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+}
+/* compact rows for the narrow side list — title (right) + status (top-left) on
+   one line, dates/meta beneath. Chevron dropped to keep it clean and short. */
 .emp-side .list-row {
   display: grid;
   grid-template-columns: 4px minmax(0, 1fr) auto;
-  grid-template-areas:
-    "bar main chev"
-    "bar status chev";
-  align-items: center;
+  grid-template-areas: "bar main status";
+  align-items: start;
   column-gap: var(--spacing-sm);
-  row-gap: 6px;
+  padding-block: var(--spacing-sm);
   padding-inline: var(--spacing-md);
 }
 .emp-side .list-row > .row-bar { grid-area: bar; }
 .emp-side .list-row > .row-main { grid-area: main; }
-.emp-side .list-row > .status { grid-area: status; justify-self: start; }
-.emp-side .list-row > .rtl-flip { grid-area: chev; }
+.emp-side .list-row > .status { grid-area: status; align-self: start; justify-self: end; }
+.emp-side .list-row > .rtl-flip { display: none; }
 .emp-side .row-meta { flex-wrap: wrap; row-gap: 2px; }
 .section-head-row { display: flex; align-items: center; justify-content: space-between; margin: 0 0 var(--spacing-sm); }
 .block-title { margin: 0; font-size: 16px; font-weight: var(--font-weight-semibold); color: var(--color-text-on-dark); letter-spacing: -0.2px; }

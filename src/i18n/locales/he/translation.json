@@ -124,6 +124,7 @@
       "newRequest": "בקשת היעדרות",
       "balancesTitle": "יתרות {{year}}",
       "requestsTitle": "בקשות {{year}}",
+      "requests": "בקשות",
       "emptyTitle": "אין היעדרויות בשנת {{year}}",
       "emptySub": "הוסף בקשה כדי לתכנן חופשה"
     },
@@ -223,6 +224,12 @@
     "noQuota": "ללא מכסה שנתית",
     "miniDays": "ימים",
     "miniPending": "{{count}} ממתינים"
+  },
+  "stats": {
+    "title": "ימי היעדרות",
+    "thisMonth": "החודש",
+    "thisYear": "השנה",
+    "pending": "{{count}} ממתינים"
   },
   "request": {
     "newTitle": "בקשת היעדרות חדשה",
