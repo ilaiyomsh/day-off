@@ -222,8 +222,8 @@ button { font-family: inherit; }
 }
 .page {
   max-width: 1180px;
-  /* flush to the physical-left edge (LTR feel) instead of centered */
-  margin: 0 auto 0 0;
+  /* centered, so a wide screen gets balanced margins on both sides (every view) */
+  margin: 0 auto;
   animation: pageIn .22s ease;
 }
 @keyframes pageIn { from { transform: translateY(6px); } to { transform: none; } }
@@ -1262,9 +1262,9 @@ button { font-family: inherit; }
 .group-tick.rejected { background: var(--color-danger); }
 
 /* (1) My absences — calendar (right, top-aligned) + left column: stats on top, requests below */
-/* cap the whole view (header + calendar + left column) and center it, so a wide
-   screen leaves balanced margins on both sides rather than all the gap on one side */
-.emp-page { max-width: 1280px; margin-inline: auto; }
+/* this view is a touch wider than the shared .page cap (calendar + side column);
+   centering is inherited from .page */
+.emp-page { max-width: 1280px; }
 .emp-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--spacing-3xl); align-items: start; }
 .emp-main { min-width: 0; }
 .emp-side { min-width: 0; display: flex; flex-direction: column; }
