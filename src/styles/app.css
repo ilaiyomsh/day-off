@@ -1262,7 +1262,9 @@ button { font-family: inherit; }
 .group-tick.rejected { background: var(--color-danger); }
 
 /* (1) My absences — calendar (right, top-aligned) + left column: stats on top, requests below */
-.emp-page { max-width: 1280px; }
+/* cap the whole view (header + calendar + left column) and center it, so a wide
+   screen leaves balanced margins on both sides rather than all the gap on one side */
+.emp-page { max-width: 1280px; margin-inline: auto; }
 .emp-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--spacing-3xl); align-items: start; }
 .emp-main { min-width: 0; }
 .emp-side { min-width: 0; display: flex; flex-direction: column; }
