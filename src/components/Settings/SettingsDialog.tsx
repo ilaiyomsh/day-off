@@ -5,6 +5,7 @@ import { useSettings, logger } from '../../core';
 import { mondayApi } from '../../services/mondayApi';
 import { listAllUsers } from '../../services/usersService';
 import { Icon, PeoplePicker } from '../ui';
+import { CompanyDaysTab } from './CompanyDaysTab';
 import type { DayOffSettings, Team, VacationColumnMap } from '../../types';
 import type { AbsenceType, RequestStatus, Employee } from '../../domain/types';
 
@@ -127,6 +128,12 @@ export function SettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: 
       id: 'team',
       label: t('settings.tabs.team'),
       render: ({ draft, setDraft }: SettingsTabRenderCtx<DayOffSettings>) => <TeamTab draft={draft} setDraft={setDraft} />,
+    },
+    {
+      id: 'company',
+      label: t('settings.tabs.company'),
+      // Company days are live data (not part of the settings draft) — managed inline.
+      render: () => <CompanyDaysTab />,
     },
   ];
 

@@ -345,7 +345,12 @@
       "boards": "Boards",
       "mapping": "Column mapping",
       "team": "Team",
-      "board": "Board"
+      "board": "Board",
+      "company": "Company days"
+    },
+    "company": {
+      "title": "Company days & holidays",
+      "help": "These days apply to everyone on the team board. Adds and edits save immediately."
     },
     "language": {
       "label": "App language",

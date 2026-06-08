@@ -16,15 +16,13 @@ import { EmployeeView } from './views/EmployeeView';
 import { TeamView } from './views/TeamView';
 import { ApprovalsView } from './views/ApprovalsView';
 import { DashboardView, type DrillPayload } from './views/DashboardView';
-import { CompanyDaysView } from './views/CompanyDaysView';
 import { RequestModal } from './modals/RequestModal';
 import { RequestDetailModal } from './modals/RequestDetailModal';
 import { ApproveModal } from './modals/ApproveModal';
 import { RejectModal } from './modals/RejectModal';
-import { CompanyDayModal } from './modals/CompanyDayModal';
 import { DrillModal } from './modals/DrillModal';
 import { SettingsDialog } from './Settings/SettingsDialog';
-import type { CompanyDay, DayOffRequest, RequestDraft } from '../domain/types';
+import type { DayOffRequest, RequestDraft } from '../domain/types';
 
 interface TabDef {
   id: string;
@@ -36,12 +34,12 @@ const TABS: { employee: TabDef[]; manager: TabDef[] } = {
   employee: [
     { id: 'mine', labelKey: 'tabs.mine', icon: 'user' },
   ],
-  // RTL: first entry renders rightmost. Right→left: mine | approvals | team | company | dashboard.
+  // RTL: first entry renders rightmost. Right→left: mine | approvals | team | dashboard.
+  // (Company days moved into the Settings dialog.)
   manager: [
     { id: 'mine', labelKey: 'tabs.mine', icon: 'user' },
     { id: 'approvals', labelKey: 'tabs.approvals', icon: 'inbox' },
     { id: 'team', labelKey: 'tabs.team', icon: 'users' },
-    { id: 'company', labelKey: 'tabs.company', icon: 'calendar' },
     { id: 'dashboard', labelKey: 'tabs.dashboard', icon: 'chart' },
   ],
 };
@@ -51,7 +49,6 @@ type ModalState =
   | { kind: 'detail'; request: DayOffRequest; asManager: boolean }
   | { kind: 'reject'; request: DayOffRequest }
   | { kind: 'approve'; request: DayOffRequest }
-  | { kind: 'companyDay'; initial?: CompanyDay | null }
   | { kind: 'drill'; payload: DrillPayload }
   | null;
 
@@ -71,8 +68,6 @@ export function DayOffView() {
     reject,
     approveAll,
     cancelRequest,
-    saveCompanyDay,
-    deleteCompanyDay,
   } = useDayOffData();
 
   const [activeTab, setActiveTab] = useState('mine');
@@ -106,14 +101,6 @@ export function DayOffView() {
   }
   function onCancelRequest(r: DayOffRequest) {
     void cancelRequest(r);
-    setModal(null);
-  }
-  function onSaveCompanyDay(draft: Parameters<typeof saveCompanyDay>[0]) {
-    void saveCompanyDay(draft);
-    setModal(null);
-  }
-  function onDeleteCompanyDay(h: CompanyDay) {
-    void deleteCompanyDay(h);
     setModal(null);
   }
 
@@ -216,14 +203,6 @@ export function DayOffView() {
             onOpenDrill={(payload) => setModal({ kind: 'drill', payload })}
           />
         )}
-        {activeTab === 'company' && (
-          <CompanyDaysView
-            year={year}
-            onYearChange={onYearChange}
-            onAdd={() => setModal({ kind: 'companyDay' })}
-            onEdit={(h) => setModal({ kind: 'companyDay', initial: h })}
-          />
-        )}
       </main>
 
       {/* modals */}
@@ -258,14 +237,6 @@ export function DayOffView() {
           request={modal.request}
           onClose={() => setModal({ kind: 'detail', request: modal.request, asManager: true })}
           onConfirm={(r, note) => onApprove(r, note)}
-        />
-      )}
-      {modal?.kind === 'companyDay' && (
-        <CompanyDayModal
-          initial={modal.initial}
-          onClose={() => setModal(null)}
-          onSave={onSaveCompanyDay}
-          onDelete={onDeleteCompanyDay}
         />
       )}
       {modal?.kind === 'drill' && (

@@ -431,6 +431,10 @@ button { font-family: inherit; }
 
 .head-actions { display: flex; align-items: center; gap: var(--spacing-md); }
 
+/* company-days management embedded in the Settings dialog */
+.cd-settings { display: flex; flex-direction: column; gap: var(--spacing-lg); }
+.cd-settings-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--spacing-md); flex-wrap: wrap; }
+
 /* legend chips */
 .legend { display: flex; align-items: center; gap: var(--spacing-lg); flex-wrap: wrap; }
 .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--color-text-secondary); }
@@ -717,6 +721,14 @@ button { font-family: inherit; }
   background: var(--color-bg-primary);
   box-shadow: inset 0 0 0 1px var(--color-border-strong);
   background-image: repeating-linear-gradient(45deg, color-mix(in srgb, var(--color-border-strong) 32%, transparent) 0 4px, transparent 4px 8px);
+}
+/* The team Gantt breaks out of the centered .page to ~95% of the viewport,
+   staying centered; the header/toolbar/legend keep the standard page alignment.
+   minmax(34px,1fr) cells + this overflow give a min cell width and scroll when narrow. */
+.team-page .team-board {
+  width: 95vw;
+  max-width: none;
+  margin-inline: calc(50% - 47.5vw);
 }
 .team-board { overflow-x: auto; }
 .team-grid { display: grid; min-width: 820px; }

@@ -130,7 +130,7 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
   }, [monthDate]);
 
   return (
-    <div className="page" style={{ maxWidth: 1320 }}>
+    <div className="page team-page">
       <div className="page-head">
         <div>
           <h2>{t('views.team.title')}</h2>
