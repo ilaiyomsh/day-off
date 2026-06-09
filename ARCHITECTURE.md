@@ -80,6 +80,15 @@ App.tsx
   blocked, per-field errors shown), and `DayOffView`'s gate — a half-configured board renders a loud
   issue-list error screen, and `DayOffDataProvider` builds no service ctx (the board is never read),
   so misconfiguration can never yield all-pending or silently-empty data.
+- **Label edits warn about external consumers** (W1.5 of the Day-off integration): Settings can
+  rewrite the personal-type status labels via `update_status_column`
+  (`mondayApi.updateStatusColumnSettings` — add/rename/recolor/deactivate, with an in-use guard),
+  but Planner and tracker cache this column's **label IDs** in their own settings (monday storage is
+  app-scoped — they cannot see Day-off's mapping). The SettingsDialog typeValues section therefore
+  shows a `role="alert"` warn-box whenever the draft labels diverge from the live board labels
+  (`components/Settings/personalTypeDiff.ts` — `hasPendingLabelEdits` against the last-loaded
+  snapshot baseline), telling the admin that board re-mapping may be needed in those apps after
+  saving. Display-only; no read/write behavior change.
 - **Company-days board** (`companyDaysBoardId`) — item name = holiday name; Timeline + a Checkbox for
   mandatory.
 - **Entitlements board** (`entitlementsBoardId`) — row per (Person × Type × Year × entitled-number).
