@@ -6,6 +6,7 @@
 import mondaySdk from 'monday-sdk-js';
 import { polyfillGlobal, createLogger, createSettings, type MondaySdk } from '@axis/app-core';
 import { DEFAULT_SETTINGS, type DayOffSettings } from './types';
+import { validateDayOffSettings } from './domain/settingsValidation';
 
 polyfillGlobal();
 
@@ -34,9 +35,8 @@ export const { SettingsProvider, useSettings } = createSettings<DayOffSettings>(
     const employees = team.filter((id) => !managers.includes(id));
     return { teams: [{ id: 'team-1', name: '', managers, employees }] };
   },
-  validate: (s) => {
-    const errors: Record<string, string> = {};
-    if (!s.vacationBoardId) errors.vacationBoardId = 'app.notConfigured';
-    return { isValid: Boolean(s.vacationBoardId), errors };
-  },
+  // W1.3 (Day-off integration): board + the five contract-critical column
+  // mappings + non-empty kind/status label maps. Half-configured settings must
+  // fail loudly — never all-pending or silently-empty reads.
+  validate: validateDayOffSettings,
 });

@@ -10,6 +10,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../core';
+import { settingsValidationIssues } from '../domain/settingsValidation';
 import { useDayOffData } from '../contexts/DayOffDataProvider';
 import { Icon, MiniLoader } from './ui';
 import { EmployeeView } from './views/EmployeeView';
@@ -54,7 +55,7 @@ type ModalState =
 
 export function DayOffView() {
   const { t } = useTranslation();
-  const { settings } = useSettings();
+  const { settings, validation } = useSettings();
   const {
     loading,
     currentUser,
@@ -78,7 +79,10 @@ export function DayOffView() {
   const [approvingRequest, setApprovingRequest] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  const notConfigured = !settings.vacationBoardId;
+  // W1.3: the whole validation gates the app, not just the board id — a
+  // half-configured board must show a loud error, never silently-empty data.
+  const notConfigured = !validation.isValid;
+  const boardMissing = !settings.vacationBoardId;
 
   const pendingCount = requests.filter((r) => r.status === 'pending').length;
 
@@ -154,7 +158,38 @@ export function DayOffView() {
           </button>
         </header>
         <main className="app-main">
-          <p style={{ color: 'var(--color-text-secondary)' }}>{t('app.notConfigured')}</p>
+          {boardMissing ? (
+            // Fresh install — the friendly "pick a board" notice.
+            <p style={{ color: 'var(--color-text-secondary)' }}>{t('app.notConfigured')}</p>
+          ) : (
+            // Board picked but the mapping is incomplete — fail loudly (W1.3):
+            // list exactly what is missing instead of showing empty data.
+            <div
+              role="alert"
+              style={{
+                border: '1px solid var(--color-danger)',
+                borderRadius: 8,
+                padding: '14px 18px',
+                maxWidth: 560,
+                display: 'grid',
+                gap: 8,
+              }}
+            >
+              <p style={{ margin: 0, fontWeight: 600, color: 'var(--color-danger)' }}>
+                {t('app.settingsIncomplete')}
+              </p>
+              <ul style={{ margin: 0, paddingInlineStart: 18, display: 'grid', gap: 4 }}>
+                {settingsValidationIssues(validation.errors).map((issue, i) => (
+                  <li key={i}>
+                    {issue.fieldLabelKey
+                      ? t(issue.messageKey, { field: t(issue.fieldLabelKey) })
+                      : t(issue.messageKey)}
+                  </li>
+                ))}
+              </ul>
+              <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>{t('app.settingsIncompleteHint')}</p>
+            </div>
+          )}
         </main>
         <SettingsDialog isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </div>

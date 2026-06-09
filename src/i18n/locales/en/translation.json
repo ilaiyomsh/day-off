@@ -11,6 +11,8 @@
     "title": "Days off",
     "brandSub": "Day Off · vacations & holidays management",
     "notConfigured": "Running as a Custom Object — pick a board in Settings",
+    "settingsIncomplete": "App settings are incomplete — data will not load until the mapping is completed",
+    "settingsIncompleteHint": "Open Settings and complete the missing fields.",
     "ready": "Ready",
     "managerView": "Manager view",
     "employeeView": "Employee view"
@@ -361,6 +363,12 @@
     "open": "Settings",
     "boardId": "Board ID",
     "fixErrors": "Fix the highlighted fields",
+    "validation": {
+      "columnRequired": "This column must be mapped",
+      "columnMissing": "The \"{{field}}\" column is not mapped",
+      "kindValuesRequired": "Pick the general/personal labels of the kind column",
+      "statusValuesRequired": "Pick the approval-status labels (pending / approved / rejected)"
+    },
     "tabs": {
       "general": "General",
       "boards": "Boards",

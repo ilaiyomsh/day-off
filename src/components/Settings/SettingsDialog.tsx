@@ -4,6 +4,7 @@ import { SettingsDialogShell, type SettingsTabDef, type SettingsTabRenderCtx } f
 import { useSettings, logger } from '../../core';
 import { MONDAY_STATUS_COLORS, mondayApi } from '../../services/mondayApi';
 import { PersonalTypeInUseError, isPersonalTypeLabelInUse } from '../../services/vacationService';
+import { validateDayOffSettings, REQUIRED_COLUMN_FIELDS } from '../../domain/settingsValidation';
 import { listAllUsers } from '../../services/usersService';
 import { Icon, PeoplePicker } from '../ui';
 import { CompanyDaysTab } from './CompanyDaysTab';
@@ -24,6 +25,9 @@ interface BoardColumn {
 interface BoardsResponse {
   boards?: { id: string; name: string; columns: BoardColumn[] }[] | null;
 }
+
+/** Column mappings required by validation (W1.3) — marked * in the mapping grid. */
+const REQUIRED_COLUMN_KEYS = new Set<keyof VacationColumnMap>(REQUIRED_COLUMN_FIELDS.map((f) => f.key));
 
 /** Mapping fields, in display order, each with its i18n label key under settings.fields. */
 const COLUMN_FIELDS: { key: keyof VacationColumnMap; labelKey: string }[] = [
@@ -305,7 +309,9 @@ export function SettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: 
     {
       id: 'board',
       label: t('settings.tabs.board'),
-      fields: ['vacationBoardId'],
+      // 'columns' is the aggregate error key for any missing required column
+      // mapping (settingsValidation) — listed so the tab error dot lights up.
+      fields: ['vacationBoardId', 'columns', 'kindValues', 'statusValues'],
       render: (ctx: SettingsTabRenderCtx<DayOffSettings>) => (
         <BoardAndMappingTab
           ctx={ctx}
@@ -351,7 +357,10 @@ export function SettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: 
         }
       }}
       tabs={tabs}
-      validate={(draft): Record<string, string> => (draft.vacationBoardId ? {} : { vacationBoardId: 'app.notConfigured' })}
+      // W1.3: same rules as the app-level validation (core.ts) — board + the
+      // five required column mappings + non-empty kind/status label maps. The
+      // shell disables Save and dots the tab while any error remains.
+      validate={(draft): Record<string, string> => validateDayOffSettings(draft).errors}
       labels={{
         save: t('common.save'),
         cancel: t('common.cancel'),
@@ -706,28 +715,42 @@ function BoardAndMappingTab({
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.sections.columns')}</h3>
         {disabled && <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.pickBoardFirst')}</small>}
         <div className="settings-columns-grid">
-          {COLUMN_FIELDS.map(({ key, labelKey }) => (
-            <label key={key} style={{ display: 'block' }}>
-              {t(`settings.fields.${labelKey}`)}
-              <SearchableSelect
-                options={columnOptions}
-                value={draft.columns[key] ?? ''}
-                disabled={disabled}
-                placeholder={t('settings.selectColumn')}
-                searchPlaceholder={t('settings.column.searchInputPlaceholder')}
-                noResultsText={t('settings.column.noResults')}
-                clearText={t('settings.column.clear')}
-                allowClear
-                onChange={(id) => setColumn(key, id)}
-              />
-            </label>
-          ))}
+          {COLUMN_FIELDS.map(({ key, labelKey }) => {
+            const columnError = errors[`columns.${key}`];
+            return (
+              <label key={key} style={{ display: 'block' }}>
+                {t(`settings.fields.${labelKey}`)}
+                {REQUIRED_COLUMN_KEYS.has(key) && (
+                  <span aria-hidden="true" style={{ color: 'var(--color-danger)' }}>
+                    {' *'}
+                  </span>
+                )}
+                <SearchableSelect
+                  options={columnOptions}
+                  value={draft.columns[key] ?? ''}
+                  disabled={disabled}
+                  placeholder={t('settings.selectColumn')}
+                  searchPlaceholder={t('settings.column.searchInputPlaceholder')}
+                  noResultsText={t('settings.column.noResults')}
+                  clearText={t('settings.column.clear')}
+                  allowClear
+                  onChange={(id) => setColumn(key, id)}
+                />
+                {columnError && (
+                  <span style={{ color: 'var(--color-danger)', fontSize: 13, display: 'block' }}>{t(columnError)}</span>
+                )}
+              </label>
+            );
+          })}
         </div>
       </section>
 
       <section style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.kindValues.title')}</h3>
         <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.kindValues.help')}</small>
+        {errors.kindValues && (
+          <small style={{ color: 'var(--color-danger)', display: 'block' }}>{t(errors.kindValues)}</small>
+        )}
         {!draft.vacationBoardId ? (
           <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.pickBoardFirst')}</small>
         ) : kindOptionsLoading ? (
@@ -865,6 +888,9 @@ function BoardAndMappingTab({
       <section style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.statusValues.title')}</h3>
         <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.statusValues.help')}</small>
+        {errors.statusValues && (
+          <small style={{ color: 'var(--color-danger)', display: 'block' }}>{t(errors.statusValues)}</small>
+        )}
         {!draft.vacationBoardId ? (
           <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.pickBoardFirst')}</small>
         ) : approvalStatusOptionsLoading ? (

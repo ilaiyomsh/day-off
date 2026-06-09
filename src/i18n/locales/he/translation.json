@@ -11,6 +11,8 @@
     "title": "ימי היעדרות",
     "brandSub": "Day Off · ניהול חופשות וחגים",
     "notConfigured": "האפליקציה רצה כ-Custom Object — יש לבחור לוח בהגדרות",
+    "settingsIncomplete": "הגדרות האפליקציה אינן שלמות — הנתונים לא ייטענו עד שהמיפוי יושלם",
+    "settingsIncompleteHint": "פתחו את ההגדרות והשלימו את השדות החסרים.",
     "ready": "מוכן",
     "managerView": "תצוגת מנהל",
     "employeeView": "תצוגת עובד"
@@ -361,6 +363,12 @@
     "open": "הגדרות",
     "boardId": "מזהה לוח",
     "fixErrors": "יש לתקן את השדות המסומנים",
+    "validation": {
+      "columnRequired": "חובה למפות עמודה זו",
+      "columnMissing": "עמודת \"{{field}}\" לא מופתה",
+      "kindValuesRequired": "יש לבחור את תוויות כללי/אישי של עמודת הסוג",
+      "statusValuesRequired": "יש לבחור את תוויות הסטטוס (ממתין / מאושר / נדחה)"
+    },
     "tabs": {
       "general": "כללי",
       "boards": "לוחות",

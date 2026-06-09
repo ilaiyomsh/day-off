@@ -132,7 +132,7 @@ function fallbackEmployee(id: string, name: string): Employee {
 
 export function DayOffDataProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
-  const { settings } = useSettings();
+  const { settings, validation } = useSettings();
   const { currentUser: mondayUser } = useMondayContext();
   const { handleError } = useErrorHandler(logger);
 
@@ -155,8 +155,12 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
   const year = monthDate.getFullYear();
 
   // ---- service context (one board; rebuilt when settings change) ----
+  // W1.3: invalid settings yield NO ctx at all — a half-configured board must
+  // never be read (it produces all-pending / silently-empty results). The
+  // DayOffView shows the misconfiguration screen instead.
+  const settingsValid = validation.isValid;
   const vacCtx = useMemo<VacationCtx | null>(() => {
-    if (!settings.vacationBoardId) return null;
+    if (!settings.vacationBoardId || !settingsValid) return null;
     const savedPersonalTypes = settings.personalTypes ?? [];
     const personalTypes = savedPersonalTypes.length ? savedPersonalTypes : LEGACY_PERSONAL_TYPES;
     return {
@@ -166,7 +170,7 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
       personalTypes,
       statusValues: settings.statusValues,
     };
-  }, [settings.vacationBoardId, settings.columns, settings.kindValues, settings.personalTypes, settings.statusValues]);
+  }, [settings.vacationBoardId, settingsValid, settings.columns, settings.kindValues, settings.personalTypes, settings.statusValues]);
 
   useEffect(() => {
     const savedPersonalTypes = settings.personalTypes ?? [];
