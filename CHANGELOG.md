@@ -68,6 +68,13 @@
   - _Requested:_ Redesign the Day-off Settings dialog to match the Tracker app's polished settings UI (SettingsDialogShell in @axis/app-core). Token-driven design mirroring Tracker: blurred overlay+fadeIn, animated modal with mobile fullscreen, 28px bold title with close X, export/import icon buttons in header, numbered tabs with bottom-border active in --color-secondary and error dots, scrollable content, footer with secondary Cancel + green primary Save. Use existing tokens with var(--token, fallback). Also tidy Day-off SettingsDialog tab fields to use tokens instead of hardcoded hex.
   - _Done:_ Plan: restyle the Settings dialog to match the Tracker UI by theming the shared SettingsDialogShell with tokens and tidying Day-off's settings fields. Done: in this repo, Day-off's SettingsDialog fields moved from hardcoded hex to design tokens (10 lines). Deviation: the bulk of the visual restyle was applied to SettingsDialogShell in @axis/app-core (a separate linked repo), so it is not part of this repo's git history.
 
+### ♻️  Refactor
+
+- **2026-06-09** — Remove dead generalTypeColumnId from VacationColumnMap (DAY-OFF-INTEGRATION W1.4) — declared but never populated/read; drop the type field and the dead settings.fields.generalType i18n keys `14ea239`
+  - _Why:_ Integration plan §4.3: a dead field in a published contract invites consumers to depend on a never-populated column; W1.4 mandates remove-or-wire and nothing wires it
+  - _Requested:_ Execute ledger task W1.4 of the Day-off integration: remove (or actually wire) the dead generalTypeColumnId declared at src/types/index.ts:47
+  - _Done:_ Planned to remove the dead generalTypeColumnId field per integration-plan W1.4 (contract §4.3 explicitly excludes it), after verifying nothing wires it. Grep-verified the field was declared-only — absent from SettingsDialog COLUMN_FIELDS, vacationService, columnMap, and all tests — then deleted it from VacationColumnMap and also removed the dead settings.fields.generalType i18n keys (he+en) that no labelKey ever referenced. Verified zero behavior change: typecheck, build, and all 93 tests green including the full test:tz timezone matrix; lint shows only the 12 pre-existing repo-wide errors, none in the touched files.
+
 ### ⚙️  Config
 
 - **2026-06-03** — Switch deployment from monday code to external hosting on GitHub Pages; publish build to gh-pages branch and wire monday Custom Object feature to custom_url `935efce`
