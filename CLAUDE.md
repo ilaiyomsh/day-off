@@ -10,7 +10,9 @@ Monday.com **Custom Object** app for managing employee days off (vacation / sick
 App ID: `11459177` · Feature (Custom Object) ID: `22016827` · Draft version: `15124901`. Slug: `yomsheni-il_day-off`.
 
 ## 2. Purpose & Usage
-For employees/managers to record and view days off. Writes day-off items to a configured monday board. Minimal skeleton today; the day-off calendar/list is the next build.
+For employees/managers to record and view days off. **Fully implemented app** (not a skeleton): employees submit/edit/cancel absence requests (dynamic type set, date range, notes, file attachment) with an approval lifecycle; managers approve/reject (single + approve-all); views = My absences (month calendar + list), Team Gantt, Approvals inbox, Dashboard; company days are managed inside Settings. All data lives on **one configured "vacations" board** (personal requests + general company days, discriminated by a kind status column) — see `ARCHITECTURE.md` for structure.
+
+**`CONTRACT.md` is the normative consumer contract** for this board (Day-off integration W1.6): Planner and tracker read the board as the absence source of truth and code against that document. Changes to read/write semantics here are contract changes — update `CONTRACT.md` (and the integration plan §4) in the same change.
 
 ## 3. Technologies
 - React `19.2` · Vite `7.2` · Language: **TypeScript** (standard #2 — new app chose TS)
@@ -94,5 +96,7 @@ Classify the change (behavior / bug / new component) and open via `change-tracke
 
 ---
 
-## 8. Optional Sections
-- (to grow) Component tree, hooks, day-off domain model, board/column mapping, @vibe/core integration.
+## 8. Related documents
+- `ARCHITECTURE.md` — component tree, data model (single vacations board), data flow, conventions.
+- `CONTRACT.md` — the **normative** absence data contract consumed by Planner/tracker (fields, label-ID matching, range-expansion spec, consistency model, board permissions).
+- `../DAY-OFF-INTEGRATION-PLAN.md` + `../DAY-OFF-INTEGRATION-EXECUTION.md` — the integration design + progress ledger (Axis root).

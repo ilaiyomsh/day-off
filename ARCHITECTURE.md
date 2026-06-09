@@ -1,11 +1,11 @@
 # Day-off — Architecture
 
-A React 19 / Vite 7 **Custom Object** monday.com app (TypeScript) for managing employee days off. This document describes the current skeleton; expand it as features land (standard #14).
+A React 19 / Vite 7 **Custom Object** monday.com app (TypeScript) for managing employee days off — a **fully implemented absence app** (requests + approval lifecycle + company days). Keep this document in sync as features land (standard #14). The board semantics other Axis apps consume are normatively specified in **`CONTRACT.md`** (Day-off integration W1.6) — contract changes must update that file (and the integration plan §4) in the same change.
 
 > **Infrastructure** (startup, MondayContext, settings module, logger, error pipeline) comes from the shared **`@axis/app-core`** package (#17), instantiated in `src/core.ts`. Only app-specific glue lives in this repo.
 
 ## 1. Overview
-- **Stack:** React 19, Vite 7, `monday-sdk-js`, `@axis/app-core`, `i18next`/`react-i18next`. UI to adopt `@vibe/core`.
+- **Stack:** React 19, Vite 7, `monday-sdk-js`, `@axis/app-core`, `i18next`/`react-i18next`. `@vibe/core` used selectively (e.g. `PeoplePicker`; tokens imported in `main.tsx`).
 - **State:** React Context only — `MondayProvider` (SDK context) → `SettingsProvider` (settings), both from `@axis/app-core`.
 - **Persistence:** global `monday.storage` keyed by `customSettings_${instanceId}` (Axis convention — not instance storage), via app-core's `createSettings`.
 - **API:** single funnel `mondayApi.query()` (`src/services/mondayApi.ts`), implementing the `Monday-api-service` contract, using app-core's shared `monday` + `logger`.
@@ -26,12 +26,12 @@ App.tsx
      └─ MondayProvider       monday.get('context') + listen, watchdog, permissions
         └─ SettingsProvider  load customSettings_${instanceId} (retry/backoff/migrations)
            └─ AppContent      applies language/dir + data-theme to <html>; renders provider + error surface
-              └─ DayOffDataProvider  loads requests/companyDays/entitlements/team; mutations + analytics + toasts
+              └─ DayOffDataProvider  one board read → requests + companyDays; team resolution; mutations + analytics + toasts
                  └─ DayOffView        app shell: header, role tabs, active view, modal switchboard, toasts
-                    ├─ views/*  (EmployeeView, TeamView, ApprovalsView, DashboardView, CompanyDaysView)
+                    ├─ views/*  (EmployeeView, TeamView, ApprovalsView, DashboardView — company days live in Settings, no CompanyDaysView)
                     ├─ modals/* (Request, RequestDetail, Approve, Reject, CompanyDay, Drill)
                     ├─ ui/*     (Icon, Avatar, Modal, MonthCalendar, YearSelect, KpiCard, …)
-                    └─ Settings/SettingsDialog (boards + column mapping + team/roles)
+                    └─ Settings/SettingsDialog (tabs: general · board + column/label mapping · team/roles · company days = CompanyDaysTab)
 ```
 
 ## 4. Modules
@@ -41,23 +41,31 @@ App.tsx
 | Entry | `src/main.tsx` | `bootstrapApp()` from app-core |
 | Root | `src/App.tsx` | app-core providers + ErrorBoundary + language/dir + error modal |
 | API layer | `src/services/mondayApi.ts` | `Monday-api-service` contract, retry, `MondayApiError` (uses core's monday+logger) |
-| Settings UI | `src/components/Settings/SettingsDialog.tsx` | boards + column mapping + team/roles, over `useSettings` |
+| Settings UI | `src/components/Settings/SettingsDialog.tsx` | tabs: general · board + column mapping + label-ID maps · team/roles · company days (`CompanyDaysTab.tsx`); label-edit consumer-warning diff in `personalTypeDiff.ts`; over `useSettings` |
 | Error UI | `src/components/ErrorDetailsModal.tsx` | surfaces `useErrorHandler` error |
 | App shell | `src/components/DayOffView.tsx` | header, role tabs, active view, modal switchboard, toasts |
-| Views | `src/components/views/*` | the 5 screens (My absences, Team board, Approvals, Dashboard, Company days) |
+| Views | `src/components/views/*` | the 4 screens (My absences, Team Gantt, Approvals, Dashboard) — company days are managed inside Settings |
 | Modals | `src/components/modals/*` | request / detail / approve / reject / company-day / drill |
 | UI kit | `src/components/ui/*` | Icon, Avatar, Modal, MonthCalendar, YearSelect, Seg, EmpFilter, KpiCard, … (barrel: `ui/index.ts`) |
 | Data context | `src/contexts/DayOffDataProvider.tsx` | `useDayOffData()` — loads data, mutations, analytics, toasts |
 | Domain | `src/domain/*` | `types.ts`, pure `dates.ts` (+ `useL10n.ts` i18n binding), `absence.ts` (types + balance analytics), `settingsValidation.ts` (required-mapping validation — single source of truth for "configured enough to read") |
-| Services | `src/services/*` | `columnMap` (monday value (de)serialization) + `requests`/`companyDays`/`entitlements`/`users` services |
+| Services | `src/services/*` | `columnMap` (monday value (de)serialization), `vacationService` (the single funnel for the vacations board: window-scoped read split into requests/companyDays + all writes — replaced the former requests/companyDays/entitlements services), `usersService` |
 | i18n | `src/i18n/` | i18next + he/en bundles (all UI strings, date-name arrays) |
 | Types | `src/types/index.ts` | `DayOffSettings` (boards + column maps + type/status value maps + `teams[]`), `Team` |
 
-## 5. Data model (monday boards, configured in Settings)
-- **Requests board** (`requestsBoardId`) — one item per absence request. Columns mapped by id: Person
-  (people), Type (status), Timeline (start..end), Status (status), employee note + manager note
-  (long-text), Decided-by (people), Decided-at (date), File. `submittedAt` = item `created_at`.
-  `typeValues`/`statusValues` map the app enums ↔ the board's status-column labels.
+## 5. Data model (ONE monday board, configured in Settings)
+> Normative consumer-facing spec: **`CONTRACT.md`** (integration W1.6). Planner/tracker code
+> against it; the bullets below are the app-internal view of the same model.
+- **A single vacations board** (`vacationBoardId`) — every item is one absence entry: a
+  **personal request** OR a **general company day**, discriminated by the `kind` status column
+  (label-ID matched, person-presence fallback). Columns mapped by id (`VacationColumnMap`):
+  kind (status), person (people), **startDate + endDate (two date columns — NOT a timeline)**,
+  workdays (numbers — app-computed, informational only), personalType (status — **open dynamic
+  label set**, cached in `settings.personalTypes`), approvalStatus (status), employee + manager
+  notes (long-text), decided-by (people), decided-at (date), file, mandatory (checkbox, general
+  entries: true = office closed). `submittedAt` = item `created_at`. `kindValues`/`statusValues`
+  map app enums ↔ the board's status labels (label IDs first — next bullet); `typeValues` is a
+  deprecated legacy map kept for old blobs.
 - **Status-label matching is by stable monday label ID** (org standard, W1.2/D8 of the Day-off
   integration): `kindValues` carries `generalLabelId`/`personalLabelId` and `statusValues` carries
   `labelIds` (per status); label **text** stays for display + a case-insensitive fallback for
@@ -89,10 +97,15 @@ App.tsx
   (`components/Settings/personalTypeDiff.ts` — `hasPendingLabelEdits` against the last-loaded
   snapshot baseline), telling the admin that board re-mapping may be needed in those apps after
   saving. Display-only; no read/write behavior change.
-- **Company-days board** (`companyDaysBoardId`) — item name = holiday name; Timeline + a Checkbox for
-  mandatory.
-- **Entitlements board** (`entitlementsBoardId`) — row per (Person × Type × Year × entitled-number).
-  `used`/`pending` are **computed live** from approved/pending requests (`domain/absence`), not stored.
+- **Company days are items on the SAME board** (kind = general): the item **name** IS the
+  holiday/company-day name (there is no general-type column — the dead `generalTypeColumnId`
+  was removed, W1.4), same start/end date columns, `mandatory` checkbox (true = office closed;
+  unmapped column reads as false). Managed inside **Settings → Company days** (`CompanyDaysTab`)
+  — there is no separate company-days board and no CompanyDaysView.
+- **Entitlements/yearly quotas were REMOVED (2026-06-03)** — no entitlements board exists.
+  `entitlements` survives on the provider surface as a constant empty list so balance analytics
+  compile (`entitled` resolves to 0); `used`/`pending` are **computed live** from
+  approved/pending requests (`domain/absence`).
 - **Teams & roles** — `teams: Team[]`, each `{ id, name, managers[], employees[] }` (monday user ids).
   Configured in Settings via a People-column-style `PeoplePicker` (one card per team). Legacy flat
   `{ team, managers }` is migrated to a single team on load (`core.ts` `migrate`). Users resolve to
@@ -103,15 +116,18 @@ App.tsx
   Approvals labels each request with the requester's team(s). Avatars show `photo_thumb_small`
   (`photoUrl`) with an initials fallback.
 
-> **Known limitation (v1):** creating a request does **not** upload a new file attachment — monday
-> file upload needs the multipart endpoint (`TODO(attachment-upload)` in `requestsService`). Existing
+> **File upload is implemented (2026-06-05):** a `File` passed as a GraphQL variable to
+> `add_file_to_column` is auto-converted by the monday platform to a multipart request
+> (`mondayApi.addFileToColumn`). Used on request create, edit, and post-hoc attach
+> (`attachDocument` — any status, e.g. adding a sick note to an approved request). Existing
 > file-column assets are shown on read.
 
 ## 6. Data flow
 ```
 SettingsProvider (config)                              [app-core → monday.storage]
-  → DayOffDataProvider  builds service ctx from settings; on mount loads
-        requests/companyDays/entitlements/team in parallel (via the services → mondayApi)
+  → DayOffDataProvider  builds the service ctx from settings (null while settings invalid — W1.3);
+        loads the vacations board once per selected year (vacationService.listEntries →
+        split into requests + companyDays); resolves team users + current user in background
      → views/modals read slices via useDayOffData()
      → a mutation (submit/approve/reject/cancel/saveCompanyDay) → service write → re-fetch → toast
   → SettingsDialog → useSettings.updateSettings → app-core persists to monday.storage
@@ -122,3 +138,7 @@ SettingsProvider (config)                              [app-core → monday.stor
 - All user-facing strings via `t(...)` (ESLint-enforced).
 - Every `catch` logs / throws / `handleError` (ESLint-enforced).
 - Settings in global storage, key-namespaced by `instanceId`.
+- Status labels matched/stored by **stable label ID** via the column `settings` field (never
+  `settings_str`); text is display + legacy fallback only.
+- **Contract changes** (anything altering how the vacations board is read/written) must update
+  `CONTRACT.md` AND the integration plan §4 in the same change.
