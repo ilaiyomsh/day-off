@@ -48,7 +48,7 @@ App.tsx
 | Modals | `src/components/modals/*` | request / detail / approve / reject / company-day / drill |
 | UI kit | `src/components/ui/*` | Icon, Avatar, Modal, MonthCalendar, YearSelect, Seg, EmpFilter, KpiCard, … (barrel: `ui/index.ts`) |
 | Data context | `src/contexts/DayOffDataProvider.tsx` | `useDayOffData()` — loads data, mutations, analytics, toasts |
-| Domain | `src/domain/*` | `types.ts`, pure `dates.ts` (+ `useL10n.ts` i18n binding), `absence.ts` (types + balance analytics) |
+| Domain | `src/domain/*` | `types.ts`, pure `dates.ts` (+ `useL10n.ts` i18n binding), `absence.ts` (types + balance analytics), `settingsValidation.ts` (required-mapping validation — single source of truth for "configured enough to read") |
 | Services | `src/services/*` | `columnMap` (monday value (de)serialization) + `requests`/`companyDays`/`entitlements`/`users` services |
 | i18n | `src/i18n/` | i18next + he/en bundles (all UI strings, date-name arrays) |
 | Types | `src/types/index.ts` | `DayOffSettings` (boards + column maps + type/status value maps + `teams[]`), `Team` |
@@ -72,6 +72,14 @@ App.tsx
   by a client-side overlap filter (`rangeOverlapsWindow`) so over-fetches never leak out of the
   window. A calendar-year number remains a back-compatible legacy scope (the app's own year-tabbed
   UI passes it; it normalizes to that year's window via `yearWindow`).
+- **Settings validation is strict** (W1.3 of the Day-off integration): beyond `vacationBoardId`, the
+  five contract-critical column mappings (kind / person / startDate / endDate / approvalStatus) and
+  non-empty kind/status label maps are required (`domain/settingsValidation.ts` — a label-map entry
+  counts when it has a stable label ID or, legacy, a non-empty text). The same function drives three
+  surfaces: app-core's `useSettings().validation` (via `core.ts`), the SettingsDialog draft (Save is
+  blocked, per-field errors shown), and `DayOffView`'s gate — a half-configured board renders a loud
+  issue-list error screen, and `DayOffDataProvider` builds no service ctx (the board is never read),
+  so misconfiguration can never yield all-pending or silently-empty data.
 - **Company-days board** (`companyDaysBoardId`) — item name = holiday name; Timeline + a Checkbox for
   mandatory.
 - **Entitlements board** (`entitlementsBoardId`) — row per (Person × Type × Year × entitled-number).
