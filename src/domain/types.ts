@@ -9,6 +9,14 @@ export type RequestStatus = 'pending' | 'approved' | 'rejected';
 /** A day-key in 'YYYY-MM-DD' form (local calendar day, no time). */
 export type DayKey = string;
 
+/** An arbitrary day window, inclusive on BOTH ends (integration contract §4.5).
+ *  Day-keys compare lexicographically, so `from <= day && day <= to` is the
+ *  membership test and no Date math is needed. */
+export interface DayWindow {
+  from: DayKey;
+  to: DayKey;
+}
+
 export interface Attachment {
   name: string;
   size?: number;

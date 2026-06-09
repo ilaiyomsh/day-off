@@ -65,6 +65,13 @@ App.tsx
   nor texts makes the read **fail loudly** (`ApprovalStatusMismatchError` → error pipeline) — never
   a silent `pending` default. Unknown/empty *kind* falls back to person-presence (personal iff the
   person column is non-empty, per the integration-plan contract §4.1), warn-logged when non-empty.
+- **Reads are window-scoped** (W1.1 of the Day-off integration): `vacationService.listEntries`
+  accepts an arbitrary **inclusive `[from,to]` day window** (`DayWindow`, `domain/types.ts`) —
+  cross-year capable per the integration contract §4.5. The board query uses the AND-of-two-rules
+  overlap form (`end ≥ from AND start ≤ to`, also catching items spanning the whole window), backed
+  by a client-side overlap filter (`rangeOverlapsWindow`) so over-fetches never leak out of the
+  window. A calendar-year number remains a back-compatible legacy scope (the app's own year-tabbed
+  UI passes it; it normalizes to that year's window via `yearWindow`).
 - **Company-days board** (`companyDaysBoardId`) — item name = holiday name; Timeline + a Checkbox for
   mandatory.
 - **Entitlements board** (`entitlementsBoardId`) — row per (Person × Type × Year × entitled-number).

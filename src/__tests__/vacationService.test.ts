@@ -1,9 +1,14 @@
 /**
- * vacationService read-path tests — W1.2 (DAY-OFF-INTEGRATION, decision D8):
- * kind/approvalStatus matching is label-ID-first (org standard), with a
- * case-insensitive text fallback for legacy settings saved before label IDs
- * were stored, and a LOUD error (never a silent `pending` default) when an
- * approval label matches nothing configured.
+ * vacationService read-path tests.
+ *
+ * W1.2 (DAY-OFF-INTEGRATION, decision D8): kind/approvalStatus matching is
+ * label-ID-first (org standard), with a case-insensitive text fallback for
+ * legacy settings saved before label IDs were stored, and a LOUD error (never
+ * a silent `pending` default) when an approval label matches nothing configured.
+ *
+ * W1.1 (DAY-OFF-INTEGRATION): listEntries reads arbitrary inclusive [from,to]
+ * windows (cross-year capable, contract §4.5); the calendar-year number form
+ * stays as a back-compatible legacy scope.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { listEntries, ApprovalStatusMismatchError, type VacationCtx } from '../services/vacationService';
@@ -279,5 +284,120 @@ describe('vacationService approval-status matching (W1.2)', () => {
     });
     mockBoardItems([personalItem({ approval: statusCv(COLS.approvalStatusColumnId, 11, 'Approved') })]);
     await expect(listEntries(ctx, 2026)).rejects.toThrow(ApprovalStatusMismatchError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W1.1 — arbitrary [from,to] read windows (cross-year capable, contract §4.5)
+// ---------------------------------------------------------------------------
+
+/** A personal item with explicit start/end day-keys. */
+function rangedPersonalItem(id: string, start: string, end: string): RawItem {
+  return {
+    id,
+    name: 'Someone - Vacation',
+    created_at: '2025-12-01T08:00:00Z',
+    column_values: [
+      statusCv(COLS.kindColumnId, 1, 'Personal'),
+      personCv('42'),
+      dateCv(COLS.startDateColumnId, start),
+      dateCv(COLS.endDateColumnId, end),
+      statusCv(COLS.personalTypeColumnId, 5, 'Vacation'),
+      statusCv(COLS.approvalStatusColumnId, 11, 'Approved'),
+    ],
+  };
+}
+
+/** A general (company-day) item with explicit start/end day-keys. */
+function rangedGeneralItem(id: string, name: string, start: string, end: string): RawItem {
+  return {
+    id,
+    name,
+    column_values: [
+      statusCv(COLS.kindColumnId, 0, 'Company'),
+      personCv(undefined),
+      dateCv(COLS.startDateColumnId, start),
+      dateCv(COLS.endDateColumnId, end),
+      { id: COLS.mandatoryColumnId, type: 'checkbox', value: JSON.stringify({ checked: 'true' }) },
+    ],
+  };
+}
+
+describe('vacationService window-scoped reads (W1.1)', () => {
+  const DEC_JAN = { from: '2025-12-01', to: '2026-01-31' };
+
+  it('returns a Dec–Jan personal request for a window spanning the year boundary', async () => {
+    // The exact case the calendar-year scope missed: an absence crossing Dec 31.
+    mockBoardItems([rangedPersonalItem('x1', '2025-12-28', '2026-01-03')]);
+    const { requests } = await listEntries(makeCtx(), DEC_JAN);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ id: 'x1', start: '2025-12-28', end: '2026-01-03' });
+  });
+
+  it('returns general days from both sides of the year boundary in one window read', async () => {
+    mockBoardItems([
+      rangedGeneralItem('g1', 'New Year Eve', '2025-12-31', '2025-12-31'),
+      rangedGeneralItem('g2', 'Founders Day', '2026-01-15', '2026-01-15'),
+    ]);
+    const { companyDays } = await listEntries(makeCtx(), DEC_JAN);
+    expect(companyDays.map((d) => d.id)).toEqual(['g1', 'g2']);
+  });
+
+  it('includes an item spanning the ENTIRE window (start before from, end after to)', async () => {
+    mockBoardItems([rangedPersonalItem('span', '2025-11-15', '2026-02-15')]);
+    const { requests } = await listEntries(makeCtx(), DEC_JAN);
+    expect(requests).toHaveLength(1);
+    expect(requests[0].id).toBe('span');
+  });
+
+  it('clips server over-fetch: items outside the window are filtered client-side', async () => {
+    mockBoardItems([
+      rangedPersonalItem('in', '2026-01-10', '2026-01-12'),
+      rangedPersonalItem('before', '2025-11-01', '2025-11-30'), // ends the day before `from`
+      rangedGeneralItem('after', 'Out of window', '2026-02-01', '2026-02-01'), // starts the day after `to`
+    ]);
+    const { requests, companyDays } = await listEntries(makeCtx(), DEC_JAN);
+    expect(requests.map((r) => r.id)).toEqual(['in']);
+    expect(companyDays).toHaveLength(0);
+  });
+
+  it('sends the window bounds to monday as the AND-of-two-rules overlap query', async () => {
+    mockBoardItems([]);
+    await listEntries(makeCtx(), DEC_JAN);
+    const query = queryMock.mock.calls[0][0] as string;
+    // end >= from
+    expect(query).toContain(`column_id: "${COLS.endDateColumnId}", compare_value: ["2025-12-01"], operator: greater_than_or_equals`);
+    // start <= to
+    expect(query).toContain(`column_id: "${COLS.startDateColumnId}", compare_value: ["2026-01-31"], operator: lower_than_or_equal`);
+  });
+
+  it('legacy calendar-year scope still reads as that year window (back-compat)', async () => {
+    mockBoardItems([
+      rangedPersonalItem('inYear', '2026-03-10', '2026-03-12'),
+      rangedPersonalItem('lastYear', '2025-06-01', '2025-06-05'),
+    ]);
+    const { requests } = await listEntries(makeCtx(), 2026);
+    expect(requests.map((r) => r.id)).toEqual(['inYear']);
+    const query = queryMock.mock.calls[0][0] as string;
+    expect(query).toContain('compare_value: ["2026-01-01"]');
+    expect(query).toContain('compare_value: ["2026-12-31"]');
+  });
+
+  it('a year-boundary item is visible to BOTH adjacent year scopes (inclusive overlap)', async () => {
+    mockBoardItems([rangedPersonalItem('xy', '2025-12-28', '2026-01-03')]);
+    const r2025 = await listEntries(makeCtx(), 2025);
+    const r2026 = await listEntries(makeCtx(), 2026);
+    expect(r2025.requests.map((r) => r.id)).toEqual(['xy']);
+    expect(r2026.requests.map((r) => r.id)).toEqual(['xy']);
+  });
+
+  it('omits query_params (full-board read) when date columns are unmapped, still window-filters client-side', async () => {
+    const ctx = makeCtx({
+      cols: { ...COLS, startDateColumnId: undefined, endDateColumnId: undefined },
+    });
+    mockBoardItems([]);
+    await listEntries(ctx, DEC_JAN);
+    const query = queryMock.mock.calls[0][0] as string;
+    expect(query).not.toContain('query_params');
   });
 });

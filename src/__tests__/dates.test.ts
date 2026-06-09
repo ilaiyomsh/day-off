@@ -14,6 +14,8 @@ import {
   fmtRange,
   relDays,
   rangeOverlapsYear,
+  rangeOverlapsWindow,
+  yearWindow,
   type MonthDayNames,
   type RelDayLabels,
 } from '../domain/dates';
@@ -109,6 +111,46 @@ describe('rangeOverlapsYear', () => {
 
   it('is false when the range ends before the year', () => {
     expect(rangeOverlapsYear('2025-01-01', '2025-12-31', 2026)).toBe(false);
+  });
+});
+
+describe('yearWindow / rangeOverlapsWindow (W1.1 — arbitrary [from,to] windows)', () => {
+  it('yearWindow covers the whole calendar year inclusively', () => {
+    expect(yearWindow(2026)).toEqual({ from: '2026-01-01', to: '2026-12-31' });
+  });
+
+  it('is true for a range fully inside the window', () => {
+    expect(rangeOverlapsWindow('2026-03-05', '2026-03-08', { from: '2026-03-01', to: '2026-03-31' })).toBe(true);
+  });
+
+  it('is true for a cross-year window catching a Dec–Jan range', () => {
+    // The case the calendar-year scope missed: window spans the year boundary.
+    const window = { from: '2025-12-01', to: '2026-01-31' };
+    expect(rangeOverlapsWindow('2025-12-28', '2026-01-03', window)).toBe(true);
+    expect(rangeOverlapsWindow('2025-12-28', '2025-12-30', window)).toBe(true);
+    expect(rangeOverlapsWindow('2026-01-02', '2026-01-04', window)).toBe(true);
+  });
+
+  it('is true for a range spanning the ENTIRE window (start before, end after)', () => {
+    expect(rangeOverlapsWindow('2025-11-15', '2026-02-15', { from: '2025-12-01', to: '2026-01-31' })).toBe(true);
+  });
+
+  it('is inclusive on both window ends (single-day touch counts)', () => {
+    const window = { from: '2026-06-01', to: '2026-06-30' };
+    expect(rangeOverlapsWindow('2026-05-20', '2026-06-01', window)).toBe(true); // touches `from`
+    expect(rangeOverlapsWindow('2026-06-30', '2026-07-05', window)).toBe(true); // touches `to`
+  });
+
+  it('is false for ranges strictly before or after the window', () => {
+    const window = { from: '2026-06-01', to: '2026-06-30' };
+    expect(rangeOverlapsWindow('2026-05-01', '2026-05-31', window)).toBe(false);
+    expect(rangeOverlapsWindow('2026-07-01', '2026-07-10', window)).toBe(false);
+  });
+
+  it('rangeOverlapsYear matches rangeOverlapsWindow over the year window', () => {
+    expect(rangeOverlapsYear('2025-12-20', '2026-01-05', 2026)).toBe(
+      rangeOverlapsWindow('2025-12-20', '2026-01-05', yearWindow(2026)),
+    );
   });
 });
 

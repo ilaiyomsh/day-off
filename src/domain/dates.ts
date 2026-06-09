@@ -4,7 +4,7 @@
  * The locale-aware formatters take their month/day NAMES as args — bind them via
  * `useL10n()` (src/domain/useL10n.ts) which pulls the arrays + `t()` from i18next.
  */
-import type { DayKey } from './types';
+import type { DayKey, DayWindow } from './types';
 
 export function pad(n: number): string {
   return String(n).padStart(2, '0');
@@ -22,11 +22,21 @@ export function fromKey(s: DayKey): Date {
   return dt;
 }
 
+/** The inclusive [from,to] day window covering a whole calendar year. */
+export function yearWindow(year: number): DayWindow {
+  return { from: `${year}-01-01`, to: `${year}-12-31` };
+}
+
+/** True when a [start, end] day-key range overlaps the inclusive [from, to]
+ *  window (both ranges inclusive on both ends — integration contract §4.5:
+ *  `start <= to AND end >= from`). Day-keys compare lexicographically. */
+export function rangeOverlapsWindow(start: DayKey, end: DayKey, window: DayWindow): boolean {
+  return start <= window.to && end >= window.from;
+}
+
 /** True when a [start, end] day-key range overlaps any day in `year`. */
 export function rangeOverlapsYear(start: DayKey, end: DayKey, year: number): boolean {
-  const yStart = `${year}-01-01`;
-  const yEnd = `${year}-12-31`;
-  return start <= yEnd && end >= yStart;
+  return rangeOverlapsWindow(start, end, yearWindow(year));
 }
 
 export function addDays(d: Date, n: number): Date {

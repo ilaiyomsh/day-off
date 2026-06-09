@@ -30,7 +30,7 @@ import {
   formatCheckbox,
   parseFile,
 } from './columnMap';
-import { rangeOverlapsYear, workdaysBetween } from '../domain/dates';
+import { rangeOverlapsWindow, yearWindow, workdaysBetween } from '../domain/dates';
 import type { ColumnValues } from './mondayApi';
 import type { VacationColumnMap, StatusValueMap, KindValueMap, PersonalTypeOption } from '../types';
 import type {
@@ -41,6 +41,7 @@ import type {
   CompanyDay,
   CompanyDayDraft,
   DayKey,
+  DayWindow,
 } from '../domain/types';
 
 export interface VacationCtx {
@@ -71,20 +72,33 @@ function entryColumnIds(cols: VacationColumnMap): string[] {
   return [...new Set(Object.values(cols).filter((id): id is string => typeof id === 'string' && id !== ''))];
 }
 
-/** Board query scoped to items whose date range overlaps `year` (when date columns are mapped). */
-function buildEntriesQuery(ctx: VacationCtx, year: number): string {
+/**
+ * Read scope for `listEntries`: an arbitrary inclusive [from,to] day window
+ * (integration contract §4.5 — windows may span year boundaries, e.g. a
+ * Planner Gantt or tracker month view crossing Dec–Jan), or a plain calendar
+ * year (legacy convenience, normalized to that year's window).
+ */
+export type ReadScope = DayWindow | number;
+
+function toWindow(scope: ReadScope): DayWindow {
+  return typeof scope === 'number' ? yearWindow(scope) : scope;
+}
+
+/** Board query scoped to items whose [start..end] range overlaps the inclusive
+ *  [from,to] window (when both date columns are mapped): `end >= from AND
+ *  start <= to` — the contract-§4.5 overlap form, which also catches items
+ *  spanning the entire window. */
+function buildEntriesQuery(ctx: VacationCtx, window: DayWindow): string {
   const columnIds = entryColumnIds(ctx.cols);
   const colFragment = columnIds.length ? `(ids: ${JSON.stringify(columnIds)})` : '';
   const startCol = ctx.cols.startDateColumnId;
   const endCol = ctx.cols.endDateColumnId;
-  const yStart = `${year}-01-01`;
-  const yEnd = `${year}-12-31`;
   const queryParams =
     startCol && endCol
       ? `, query_params: {
           rules: [
-            { column_id: "${endCol}", compare_value: ["${yStart}"], operator: greater_than_or_equals },
-            { column_id: "${startCol}", compare_value: ["${yEnd}"], operator: lower_than_or_equal }
+            { column_id: "${endCol}", compare_value: ["${window.from}"], operator: greater_than_or_equals },
+            { column_id: "${startCol}", compare_value: ["${window.to}"], operator: lower_than_or_equal }
           ],
           operator: and
         }`
@@ -287,16 +301,24 @@ function mapCompanyDay(ctx: VacationCtx, item: RawItem, get: (id?: string) => Ra
   return { id: String(item.id), name: item.name ?? '', start, end, mandatory };
 }
 
-/** Read board items for `year` and split into personal requests + general days. */
+/**
+ * Read board items whose range overlaps `scope` and split into personal
+ * requests + general days. `scope` is an inclusive [from,to] `DayWindow`
+ * (may span year boundaries) or a calendar-year number (legacy form —
+ * existing callers keep working unchanged; defaults to the current year).
+ * Server-side filtering (when date columns are mapped) is backed by a
+ * client-side overlap filter so over-fetches never leak out of the window.
+ */
 export async function listEntries(
   ctx: VacationCtx,
-  year: number = new Date().getFullYear(),
+  scope: ReadScope = new Date().getFullYear(),
 ): Promise<{ requests: DayOffRequest[]; companyDays: CompanyDay[] }> {
+  const window = toWindow(scope);
   try {
     type Page = { cursor: string | null; items: RawItem[] };
     const items: RawItem[] = [];
     let cursor: string | null = null;
-    const query = buildEntriesQuery(ctx, year);
+    const query = buildEntriesQuery(ctx, window);
     do {
       const data: { boards: { items_page: Page }[] } = await mondayApi.query<{
         boards: { items_page: Page }[];
@@ -312,15 +334,15 @@ export async function listEntries(
       const get = (id?: string) => (id ? byId(item).get(id) : undefined);
       if (isPersonal(ctx, get)) {
         const r = mapRequest(ctx, item, get);
-        if (r && rangeOverlapsYear(r.start, r.end, year)) requests.push(r);
+        if (r && rangeOverlapsWindow(r.start, r.end, window)) requests.push(r);
       } else {
         const c = mapCompanyDay(ctx, item, get);
-        if (c && rangeOverlapsYear(c.start, c.end, year)) companyDays.push(c);
+        if (c && rangeOverlapsWindow(c.start, c.end, window)) companyDays.push(c);
       }
     }
     return { requests, companyDays };
   } catch (err) {
-    logger.error('vacationService', 'listEntries failed', { year, err });
+    logger.error('vacationService', 'listEntries failed', { window, err });
     throw err;
   }
 }
