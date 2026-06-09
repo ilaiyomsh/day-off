@@ -470,7 +470,6 @@
       "kind": "סטטוס כללי/אישי",
       "person": "עובד",
       "personalType": "סיווג אישי",
-      "generalType": "סיווג כללי",
       "approvalStatus": "סטטוס בקשה (ממתין/מאושר/נדחה)",
       "mandatory": "חובה",
       "empNote": "הערת עובד",

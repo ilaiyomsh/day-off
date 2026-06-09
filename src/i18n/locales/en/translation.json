@@ -470,7 +470,6 @@
       "kind": "General/personal status",
       "person": "Employee",
       "personalType": "Personal classification",
-      "generalType": "General classification",
       "approvalStatus": "Request status (pending/approved/rejected)",
       "mandatory": "Mandatory",
       "empNote": "Employee note",

@@ -43,8 +43,6 @@ export interface VacationColumnMap {
   workdaysColumnId?: string;
   /** Status column classifying a PERSONAL entry (vacation / sick / reserves). */
   personalTypeColumnId?: string;
-  /** Status column classifying a GENERAL entry (holiday / company day / …, free labels). */
-  generalTypeColumnId?: string;
   /** Status column holding the approval state of a personal request. */
   approvalStatusColumnId?: string;
   empNoteColumnId?: string;
