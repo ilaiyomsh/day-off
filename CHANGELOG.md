@@ -32,6 +32,10 @@
 
 ### 🔧 Feature Changes
 
+- **2026-06-09** — W1.2: match kind/approvalStatus by stable label ID (ID-first, case-insensitive text fallback for legacy settings) and replace the silent pending default with a loud surfaced error on approval-label mismatch `13a800c`
+  - _Why:_ Day-off integration plan decision D8 (org standard: status labels by ID, never text); silent pending defaults make approved absences vanish from consumers with no error
+  - _Requested:_ Execute ledger task W1.2 of DAY-OFF-INTEGRATION: switch Day-off kind/approvalStatus matching from label TEXT to LABEL ID with text fallback for migration; kill the silent pending default - mismatches must log loudly through the error pipeline and surface; settings kindValues/statusValues carry label IDs with back-compat; add tests for ID matching, text fallback, and loud mismatch errors
+  - _Done:_ Planned an ID-first rewrite of the vacations-board read path per integration decision D8. Extended KindValueMap with generalLabelId/personalLabelId and StatusValueMap with a labelIds map (defaults unchanged, so legacy text-only settings keep working via the case-insensitive fallback), wired the Settings pickers to persist label IDs alongside text, and rewrote isPersonal plus a new resolveApprovalStatus in vacationService to compare by stable label ID first. Replaced the silent pending default with a thrown ApprovalStatusMismatchError that logs full diagnostics and surfaces through the error pipeline; an empty approval value still reads as pending, and an unknown kind label warn-logs before the contract-blessed person-presence fallback. Added 14 tests (78 total, green across the TZ matrix); no deviations from the approved plan.
 - **2026-06-09** — Theme status badges by board status colors and make employee/manager notes editable inline, with relative decided-time and per-group empty states across Approvals and request detail. `d5b33bb`
   - _Why:_ Make request status visually match the configured board and let notes be edited inline, improving the approvals workflow.
   - _Requested:_ תעשה סדר בעצי עבודה וענפים ושינויים — לקמט אצווה לא-מתועדת של שיפורי אישורים/סטטוס
