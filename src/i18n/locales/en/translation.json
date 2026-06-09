@@ -422,6 +422,7 @@
     "typeValues": {
       "title": "Type value mapping",
       "help": "The board status-column label for each absence type.",
+      "consumerWarning": "Heads up: external apps (Planner, Tracker) cache this column's label IDs in their own settings. Changing, adding, or removing labels may require re-mapping the board in those apps after saving.",
       "vacation": "Vacation value",
       "sick": "Sick value",
       "reserves": "Reserves value"

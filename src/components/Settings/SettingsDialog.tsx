@@ -5,6 +5,7 @@ import { useSettings, logger } from '../../core';
 import { MONDAY_STATUS_COLORS, mondayApi } from '../../services/mondayApi';
 import { PersonalTypeInUseError, isPersonalTypeLabelInUse } from '../../services/vacationService';
 import { validateDayOffSettings, REQUIRED_COLUMN_FIELDS } from '../../domain/settingsValidation';
+import { hasPendingLabelEdits, samePersonalTypeOptions } from './personalTypeDiff';
 import { listAllUsers } from '../../services/usersService';
 import { Icon, PeoplePicker } from '../ui';
 import { CompanyDaysTab } from './CompanyDaysTab';
@@ -131,17 +132,6 @@ function resolveSelectedOption(
   }
   const idByLabel = findOptionIdByLabel(options, label);
   return idByLabel == null ? undefined : options.find((opt) => opt.id === idByLabel);
-}
-
-function samePersonalTypeOptions(a: PersonalTypeOption[], b: PersonalTypeOption[]): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i += 1) {
-    if (a[i].id !== b[i].id) return false;
-    if (a[i].title !== b[i].title) return false;
-    if (a[i].color !== b[i].color) return false;
-    if (a[i].index !== b[i].index) return false;
-  }
-  return true;
 }
 
 function isStatusColumnType(type?: string): boolean {
@@ -433,6 +423,9 @@ function BoardAndMappingTab({
   );
   const [kindOptions, setKindOptions] = useState<StatusLabelOption[]>([]);
   const [approvalStatusOptions, setApprovalStatusOptions] = useState<StatusLabelOption[]>([]);
+  // Last-known LIVE board labels — the baseline for the W1.5 consumer warning
+  // (null until the snapshot loads / after a failed load → no warning shown).
+  const [livePersonalTypes, setLivePersonalTypes] = useState<PersonalTypeOption[] | null>(null);
   const personalTypes = useMemo(() => {
     const draftList = draft.personalTypes ?? [];
     if (!draftList.length) return detectedPersonalTypes;
@@ -443,6 +436,15 @@ function BoardAndMappingTab({
     }));
   }, [detectedPersonalTypes, draft.personalTypes]);
   const personalTypeColorChoices = useMemo(() => collectStatusColorChoices(personalTypes), [personalTypes]);
+  // W1.5: warn before save when the draft labels diverge from the live board
+  // labels — external consumers (Planner, tracker) cache this column's label
+  // IDs in their own settings, so a label rewrite may require re-mapping there.
+  const showConsumerLabelWarning =
+    Boolean(draft.vacationBoardId) &&
+    !personalTypesLoading &&
+    Boolean(draft.columns.personalTypeColumnId) &&
+    isStatusColumnType(personalTypeColumn?.type) &&
+    hasPendingLabelEdits(personalTypes, livePersonalTypes);
 
   const setPersonalTypeLabel = (id: string, title: string) => {
     const next = personalTypes.map((opt) => (opt.id === id ? { ...opt, title } : opt));
@@ -570,11 +572,13 @@ function BoardAndMappingTab({
           labelsCount: snapshot.length,
         });
         setField('personalTypes', snapshot as DayOffSettings['personalTypes']);
+        setLivePersonalTypes(snapshot);
       })
       .catch((err) => {
         logger.error('SettingsDialog', 'failed to sync personal-type labels', { boardId, columnId, err });
         if (cancelled) return;
         setField('personalTypes', [] as DayOffSettings['personalTypes']);
+        setLivePersonalTypes(null);
       })
       .finally(() => {
         if (loadGen === personalTypesLoadGen.current) setPersonalTypesLoading(false);
@@ -800,6 +804,12 @@ function BoardAndMappingTab({
         {personalTypeError ? (
           <small style={{ color: 'var(--color-danger)', display: 'block' }}>{personalTypeError}</small>
         ) : null}
+        {showConsumerLabelWarning && (
+          <div className="warn-box" role="alert">
+            <Icon name="alert" size={16} />
+            <span>{t('settings.typeValues.consumerWarning')}</span>
+          </div>
+        )}
         {!draft.vacationBoardId ? (
           <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.pickBoardFirst')}</small>
         ) : personalTypesLoading ? (
