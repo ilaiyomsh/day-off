@@ -496,6 +496,7 @@
     "personalTypeCheckFailed": "Could not check whether this label is in use. Please try again."
   },
   "errors": {
-    "title": "Something went wrong"
+    "title": "Something went wrong",
+    "approvalStatusMismatch": "An approval-status label on the board does not match the status mapping in Settings — update the mapping"
   }
 }

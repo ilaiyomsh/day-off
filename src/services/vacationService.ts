@@ -109,6 +109,65 @@ function enumFromLabel<K extends string>(map: Record<K, string>, order: K[], lab
   return undefined;
 }
 
+/**
+ * True when a configured label id (string, from settings) refers to the label id
+ * read off an item's status `value` JSON. Empty/blank configured ids never match
+ * (guards `Number('') === 0` against real label id 0).
+ */
+function sameLabelId(configured: string | null | undefined, actual: number): boolean {
+  if (configured == null) return false;
+  const trimmed = configured.trim();
+  if (trimmed === '') return false;
+  return Number(trimmed) === actual;
+}
+
+/**
+ * Thrown when an item's approval-status label matches neither the configured
+ * label ids nor the configured label texts (D8: never silently default to
+ * pending — a mismatch means the settings drifted from the board labels, and a
+ * silent default makes approved absences vanish from consumers with no error).
+ * Surfaces via listEntries → DayOffDataProvider.handleError → ErrorDetailsModal.
+ */
+export class ApprovalStatusMismatchError extends Error {
+  readonly i18nKey = 'errors.approvalStatusMismatch' as const;
+
+  constructor(readonly details: { itemId: string; labelId: number | null; labelText: string }) {
+    super(
+      `Approval-status label of item ${details.itemId} (id=${details.labelId ?? 'none'}, text="${details.labelText}") matches no configured status mapping — fix the status mapping in Settings`,
+    );
+    this.name = 'ApprovalStatusMismatchError';
+  }
+}
+
+/**
+ * Resolve an item's approval status. Label-ID first (org standard — stable across
+ * renames), then case-insensitive text (legacy settings saved before label ids
+ * were stored). An item with NO status value at all is a not-yet-decided request
+ * → pending (semantic default, not a mismatch). A non-empty value that matches
+ * nothing configured fails LOUDLY (never the old silent `pending` default).
+ */
+function resolveApprovalStatus(
+  ctx: VacationCtx,
+  itemId: string,
+  labelId: number | null,
+  labelText: string,
+): RequestStatus {
+  if (labelId != null) {
+    const ids = ctx.statusValues.labelIds;
+    for (const key of STATUS_ORDER) if (sameLabelId(ids?.[key], labelId)) return key;
+  }
+  const byText = enumFromLabel(ctx.statusValues, STATUS_ORDER, labelText);
+  if (byText) return byText;
+  if (labelId == null && labelText === '') return 'pending';
+  logger.error('vacationService', 'approval-status label matches no configured status mapping', {
+    itemId,
+    labelId,
+    labelText,
+    configured: ctx.statusValues,
+  });
+  throw new ApprovalStatusMismatchError({ itemId, labelId, labelText });
+}
+
 function findPersonalTypeByLabelId(types: PersonalTypeOption[], labelId: number | null): PersonalTypeOption | undefined {
   if (labelId == null) return undefined;
   return types.find((opt) => Number(opt.id) === labelId);
@@ -137,19 +196,42 @@ function createdAtKey(created?: string | null): DayKey | null {
 
 /**
  * Decide whether an item is a personal request or a general day.
- * The kind status label wins; when it's unmapped/ambiguous, fall back to the
- * presence of a person value (personal) vs. none (general).
+ * The kind status label wins — matched by stable label ID first (org standard),
+ * then by case-insensitive text (legacy settings). When the kind is unmapped or
+ * unknown, fall back to the presence of a person value (personal) vs. none
+ * (general) — the contract-blessed fallback (CONTRACT spec / plan §4.1). A
+ * non-empty kind that matches nothing configured signals settings drift and is
+ * warn-logged before falling back.
  */
 function isPersonal(ctx: VacationCtx, get: (id?: string) => RawColumnValue | undefined): boolean {
-  const label = parseStatusText(get(ctx.cols.kindColumnId)?.text);
-  const personal = ctx.kindValues.personal.trim();
-  const general = ctx.kindValues.general.trim();
+  const kindCv = get(ctx.cols.kindColumnId);
+  const labelId = parseStatusIndex(kindCv?.value);
+  const label = parseStatusText(kindCv?.text);
+  const { kindValues } = ctx;
+  if (labelId != null) {
+    if (sameLabelId(kindValues.personalLabelId, labelId)) return true;
+    if (sameLabelId(kindValues.generalLabelId, labelId)) return false;
+  }
+  const personal = kindValues.personal.trim();
+  const general = kindValues.general.trim();
   if (label !== '') {
     if (personal !== '' && label.toLowerCase() === personal.toLowerCase()) return true;
     if (general !== '' && label.toLowerCase() === general.toLowerCase()) return false;
   }
   // Fallback: an entry with a person is personal.
-  return parsePeople(get(ctx.cols.personColumnId)?.value).length > 0;
+  const hasPerson = parsePeople(get(ctx.cols.personColumnId)?.value).length > 0;
+  if (labelId != null || label !== '') {
+    // A kind label exists but matches neither configured value — the settings
+    // drifted from the board labels. The person fallback keeps the item visible
+    // (contract §4.1), but the drift must be loud in the logs.
+    logger.warn('vacationService', 'kind label matches no configured kind mapping — falling back to person presence', {
+      labelId,
+      labelText: label,
+      configured: kindValues,
+      resolvedAs: hasPerson ? 'personal' : 'general',
+    });
+  }
+  return hasPerson;
 }
 
 function mapRequest(ctx: VacationCtx, item: RawItem, get: (id?: string) => RawColumnValue | undefined): DayOffRequest | null {
@@ -165,8 +247,13 @@ function mapRequest(ctx: VacationCtx, item: RawItem, get: (id?: string) => RawCo
   const type = findPersonalTypeByLabelId(ctx.personalTypes, typeLabelId) ?? findPersonalTypeByTitle(ctx.personalTypes, typeLabel);
   const fallbackId = typeLabelId != null ? `status_label_${typeLabelId}` : 'status_label_unknown';
   const resolvedType: AbsenceType = type?.id ?? fallbackId;
-  const statusLabel = parseStatusText(get(cols.approvalStatusColumnId)?.text);
-  const status: RequestStatus = enumFromLabel(ctx.statusValues, STATUS_ORDER, statusLabel) ?? 'pending';
+  const approvalCv = get(cols.approvalStatusColumnId);
+  const status: RequestStatus = resolveApprovalStatus(
+    ctx,
+    String(item.id),
+    parseStatusIndex(approvalCv?.value),
+    parseStatusText(approvalCv?.text),
+  );
 
   const note = get(cols.empNoteColumnId)?.text?.trim() || undefined;
   const managerNote = get(cols.mgrNoteColumnId)?.text?.trim() || undefined;

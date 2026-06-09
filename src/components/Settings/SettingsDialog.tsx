@@ -111,10 +111,22 @@ function findOptionIdByLabel(options: StatusLabelOption[], label: string | undef
   return options.find((opt) => normalizeLabel(opt.title) === normalized)?.id;
 }
 
-function findOptionColorByLabel(options: StatusLabelOption[], label: string | undefined | null): string | undefined {
-  const normalized = normalizeLabel(label);
-  if (!normalized) return undefined;
-  return options.find((opt) => normalizeLabel(opt.title) === normalized)?.color;
+/**
+ * Resolve the selected option for a kind/approval picker — by stored stable
+ * label ID first (W1.2 / D8; survives label renames), falling back to a text
+ * lookup for legacy settings saved before label IDs were stored.
+ */
+function resolveSelectedOption(
+  options: StatusLabelOption[],
+  labelId: string | null | undefined,
+  label: string | undefined | null,
+): StatusLabelOption | undefined {
+  if (labelId != null && labelId.trim() !== '') {
+    const byId = options.find((opt) => opt.id === labelId);
+    if (byId) return byId;
+  }
+  const idByLabel = findOptionIdByLabel(options, label);
+  return idByLabel == null ? undefined : options.find((opt) => opt.id === idByLabel);
 }
 
 function samePersonalTypeOptions(a: PersonalTypeOption[], b: PersonalTypeOption[]): boolean {
@@ -476,13 +488,26 @@ function BoardAndMappingTab({
     };
     setField('personalTypes', [...personalTypes, next] as DayOffSettings['personalTypes']);
   };
+  // Selections persist the stable monday label ID alongside the text (W1.2 / D8):
+  // reads match by ID first; the text stays for display + legacy-settings fallback.
   const setKindValue = (key: 'general' | 'personal', optionId: string | undefined) => {
-    const label = kindOptions.find((opt) => opt.id === optionId)?.title ?? '';
-    setField('kindValues', { ...draft.kindValues, [key]: label });
+    const opt = kindOptions.find((o) => o.id === optionId);
+    setField('kindValues', {
+      ...draft.kindValues,
+      [key]: opt?.title ?? '',
+      [key === 'general' ? 'generalLabelId' : 'personalLabelId']: opt?.id ?? null,
+    });
   };
   const setStatusValue = (status: RequestStatus, optionId: string | undefined) => {
-    const label = approvalStatusOptions.find((opt) => opt.id === optionId)?.title ?? '';
-    setDraft((d) => ({ ...d, statusValues: { ...d.statusValues, [status]: label } }));
+    const opt = approvalStatusOptions.find((o) => o.id === optionId);
+    setDraft((d) => ({
+      ...d,
+      statusValues: {
+        ...d.statusValues,
+        [status]: opt?.title ?? '',
+        labelIds: { ...d.statusValues.labelIds, [status]: opt?.id ?? null },
+      },
+    }));
   };
 
   useEffect(() => {
@@ -715,29 +740,33 @@ function BoardAndMappingTab({
           <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.kindValuesEmpty')}</small>
         ) : (
           <div className="settings-kind-grid">
-            {(['general', 'personal'] as const).map((k) => (
-              <label key={k} style={{ display: 'block' }}>
-                <span className="settings-value-label">
-                  {findOptionColorByLabel(kindOptions, draft.kindValues[k]) && (
-                    <span
-                      className="settings-value-dot"
-                      style={{ backgroundColor: findOptionColorByLabel(kindOptions, draft.kindValues[k]) }}
-                    />
-                  )}
-                  {t(`settings.kindValues.${k}`)}
-                </span>
-                <SearchableSelect
-                  options={kindOptions.map((opt) => ({ id: opt.id, name: opt.title, color: opt.color }))}
-                  value={findOptionIdByLabel(kindOptions, draft.kindValues[k])}
-                  placeholder={t('settings.selectStatusLabel')}
-                  searchPlaceholder={t('settings.column.searchInputPlaceholder')}
-                  noResultsText={t('settings.column.noResults')}
-                  clearText={t('settings.column.clear')}
-                  allowClear
-                  onChange={(id) => setKindValue(k, id)}
-                />
-              </label>
-            ))}
+            {(['general', 'personal'] as const).map((k) => {
+              const selected = resolveSelectedOption(
+                kindOptions,
+                k === 'general' ? draft.kindValues.generalLabelId : draft.kindValues.personalLabelId,
+                draft.kindValues[k],
+              );
+              return (
+                <label key={k} style={{ display: 'block' }}>
+                  <span className="settings-value-label">
+                    {selected?.color && (
+                      <span className="settings-value-dot" style={{ backgroundColor: selected.color }} />
+                    )}
+                    {t(`settings.kindValues.${k}`)}
+                  </span>
+                  <SearchableSelect
+                    options={kindOptions.map((opt) => ({ id: opt.id, name: opt.title, color: opt.color }))}
+                    value={selected?.id}
+                    placeholder={t('settings.selectStatusLabel')}
+                    searchPlaceholder={t('settings.column.searchInputPlaceholder')}
+                    noResultsText={t('settings.column.noResults')}
+                    clearText={t('settings.column.clear')}
+                    allowClear
+                    onChange={(id) => setKindValue(k, id)}
+                  />
+                </label>
+              );
+            })}
           </div>
         )}
       </section>
@@ -848,29 +877,33 @@ function BoardAndMappingTab({
           <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.statusValuesEmpty')}</small>
         ) : (
           <div className="settings-status-grid">
-            {STATUS_KEYS.map((status) => (
-              <label key={status} style={{ display: 'block' }}>
-                <span className="settings-value-label">
-                  {findOptionColorByLabel(approvalStatusOptions, draft.statusValues[status]) && (
-                    <span
-                      className="settings-value-dot"
-                      style={{ backgroundColor: findOptionColorByLabel(approvalStatusOptions, draft.statusValues[status]) }}
-                    />
-                  )}
-                  {t(`settings.statusValues.${status}`)}
-                </span>
-                <SearchableSelect
-                  options={approvalStatusOptions.map((opt) => ({ id: opt.id, name: opt.title, color: opt.color }))}
-                  value={findOptionIdByLabel(approvalStatusOptions, draft.statusValues[status])}
-                  placeholder={t('settings.selectStatusLabel')}
-                  searchPlaceholder={t('settings.column.searchInputPlaceholder')}
-                  noResultsText={t('settings.column.noResults')}
-                  clearText={t('settings.column.clear')}
-                  allowClear
-                  onChange={(id) => setStatusValue(status, id)}
-                />
-              </label>
-            ))}
+            {STATUS_KEYS.map((status) => {
+              const selected = resolveSelectedOption(
+                approvalStatusOptions,
+                draft.statusValues.labelIds?.[status],
+                draft.statusValues[status],
+              );
+              return (
+                <label key={status} style={{ display: 'block' }}>
+                  <span className="settings-value-label">
+                    {selected?.color && (
+                      <span className="settings-value-dot" style={{ backgroundColor: selected.color }} />
+                    )}
+                    {t(`settings.statusValues.${status}`)}
+                  </span>
+                  <SearchableSelect
+                    options={approvalStatusOptions.map((opt) => ({ id: opt.id, name: opt.title, color: opt.color }))}
+                    value={selected?.id}
+                    placeholder={t('settings.selectStatusLabel')}
+                    searchPlaceholder={t('settings.column.searchInputPlaceholder')}
+                    noResultsText={t('settings.column.noResults')}
+                    clearText={t('settings.column.clear')}
+                    allowClear
+                    onChange={(id) => setStatusValue(status, id)}
+                  />
+                </label>
+              );
+            })}
           </div>
         )}
       </section>

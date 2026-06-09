@@ -58,14 +58,29 @@ export interface VacationColumnMap {
 
 /** Maps each absence type → the label text used by the personal-type status column. */
 export type TypeValueMap = Record<AbsenceType, string>;
-/** Maps each request status → the label text used by the approval status column. */
-export type StatusValueMap = Record<RequestStatus, string>;
+/**
+ * Maps each request status → the approval-status column label.
+ * Matching is by stable monday label ID first (`labelIds`, org standard); the
+ * text fields remain as display + case-insensitive fallback for settings saved
+ * before label IDs were stored (legacy blobs simply lack `labelIds`).
+ */
+export interface StatusValueMap {
+  pending: string;
+  approved: string;
+  rejected: string;
+  /** Stable monday label ids per status (stringified, as in `PersonalTypeOption.id`). */
+  labelIds?: Partial<Record<RequestStatus, string | null>>;
+}
 /** The two labels of the kind/discriminator status column. */
 export interface KindValueMap {
   /** Label that marks an item as a general / company-wide day. */
   general: string;
   /** Label that marks an item as a personal day-off request. */
   personal: string;
+  /** Stable monday label id of the general label (ID-first matching; text is fallback). */
+  generalLabelId?: string | null;
+  /** Stable monday label id of the personal label (ID-first matching; text is fallback). */
+  personalLabelId?: string | null;
 }
 
 /** Snapshot of personal absence type labels from the board status column. */

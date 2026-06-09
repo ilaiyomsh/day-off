@@ -58,6 +58,13 @@ App.tsx
   (people), Type (status), Timeline (start..end), Status (status), employee note + manager note
   (long-text), Decided-by (people), Decided-at (date), File. `submittedAt` = item `created_at`.
   `typeValues`/`statusValues` map the app enums ↔ the board's status-column labels.
+- **Status-label matching is by stable monday label ID** (org standard, W1.2/D8 of the Day-off
+  integration): `kindValues` carries `generalLabelId`/`personalLabelId` and `statusValues` carries
+  `labelIds` (per status); label **text** stays for display + a case-insensitive fallback for
+  legacy settings saved before IDs were stored. An item whose approval label matches neither IDs
+  nor texts makes the read **fail loudly** (`ApprovalStatusMismatchError` → error pipeline) — never
+  a silent `pending` default. Unknown/empty *kind* falls back to person-presence (personal iff the
+  person column is non-empty, per the integration-plan contract §4.1), warn-logged when non-empty.
 - **Company-days board** (`companyDaysBoardId`) — item name = holiday name; Timeline + a Checkbox for
   mandatory.
 - **Entitlements board** (`entitlementsBoardId`) — row per (Person × Type × Year × entitled-number).
