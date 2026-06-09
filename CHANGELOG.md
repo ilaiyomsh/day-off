@@ -4,6 +4,13 @@
 
 ## 2026-06
 
+### 🐛 Bug Fixes
+
+- **2026-06-09** — Portal the Team Gantt bar Tooltip to document.body with a high z-index so it is no longer clipped behind absence bars in adjacent rows. `9a773bf`
+  - _Why:_ The vibe Tooltip rendered inline inside the bar's grid cell, so a bar in the row above painted over it.
+  - _Requested:_ טולטיפ תמיד למעלה, פה הוא מוסתר מאחורי בר אחר
+  - _Done:_ Added getContainer={() => document.body} and zIndex={2200} to the per-bar vibe Tooltip in TeamView so it portals out of the Gantt grid stacking context. It now floats above the board (z 2-6) and toast (1800) while staying below modals (2300/2400), fixing the clipping behind bars in adjacent rows.
+
 ### ✨ New Features
 
 - **2026-06-05** — UI/RTL refinement batch + document-attachment feature: centered 30% hover add-button in My-absences calendar; unified request-summary with separators; submit button 'Save' w/o icon; new-request button w/o + icon; sticky team-name group headers on horizontal scroll (TeamView); collapsed Approvals empty-state to a single text-only row + removed page subtitle; color legend atop team board incl. pending marker; fixed status-badge overlapping date in narrow side list; removed 'no annual quota' text from BalanceCard; implemented real monday file upload via seamless multipart (add_file_to_column) wired into create/update + attach-document button in RequestDetailModal for any status incl. approved. `f9a3425`
