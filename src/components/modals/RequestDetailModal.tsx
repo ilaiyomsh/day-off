@@ -59,7 +59,7 @@ export function RequestDetailModal({
   }
 
   const emp = empById(request.employeeId);
-  const meta = ABSENCE_TYPES[request.type];
+  const meta = ABSENCE_TYPES[request.type] ?? { id: request.type, labelKey: request.type, color: 'var(--color-primary)', index: 0 };
   const workdays = workdaysBetween(request.start, request.end);
   const decidedBy = request.decidedBy ? empById(request.decidedBy) : null;
   const canManage = viewerIsManager && request.status === 'pending';
@@ -73,9 +73,16 @@ export function RequestDetailModal({
       footer={
         <>
           {canCancel && (
-            <button className="btn btn-danger spread" onClick={() => onCancel(request)}>
-              <Icon name="trash" size={15} /> {t('detail.cancelRequest')}
-            </button>
+            <>
+              {onEdit && (
+                <button className="btn btn-ghost" onClick={() => onEdit(request)}>
+                  {t('detail.editRequest')}
+                </button>
+              )}
+              <button className="btn btn-danger" onClick={() => onCancel(request)}>
+                <Icon name="trash" size={15} /> {t('detail.cancelRequest')}
+              </button>
+            </>
           )}
           {canManage && (
             <>
@@ -209,11 +216,6 @@ export function RequestDetailModal({
         </div>
       </div>
 
-      {canCancel && onEdit && (
-        <button className="btn btn-ghost" style={{ alignSelf: 'flex-start' }} onClick={() => onEdit(request)}>
-          {t('detail.editRequest')}
-        </button>
-      )}
     </Modal>
   );
 }

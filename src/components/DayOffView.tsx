@@ -11,7 +11,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettings } from '../core';
 import { useDayOffData } from '../contexts/DayOffDataProvider';
-import { Icon } from './ui';
+import { Icon, MiniLoader } from './ui';
 import { EmployeeView } from './views/EmployeeView';
 import { TeamView } from './views/TeamView';
 import { ApprovalsView } from './views/ApprovalsView';
@@ -56,6 +56,7 @@ export function DayOffView() {
   const { t } = useTranslation();
   const { settings } = useSettings();
   const {
+    loading,
     currentUser,
     isManager,
     isBoardOwner,
@@ -73,24 +74,45 @@ export function DayOffView() {
   const [activeTab, setActiveTab] = useState('mine');
   const [modal, setModal] = useState<ModalState>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [approvingRequest, setApprovingRequest] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const notConfigured = !settings.vacationBoardId;
 
-  const pendingCount = requests.filter(
-    (r) => r.status === 'pending' && r.employeeId !== currentUser.id,
-  ).length;
+  const pendingCount = requests.filter((r) => r.status === 'pending').length;
 
   const tabs = isManager ? TABS.manager : TABS.employee;
 
   // ---- mutation wiring: do the write via the data hook, then close the modal ----
-  function onSubmitRequest(draft: RequestDraft) {
+  async function onSubmitRequest(draft: RequestDraft) {
     const editingId = modal?.kind === 'request' ? modal.initial?.id : undefined;
-    void submitRequest(draft, editingId);
-    setModal(null);
+    setSubmittingRequest(true);
+    try {
+      const ok = await submitRequest(draft, editingId);
+      if (ok) setModal(null);
+    } finally {
+      setSubmittingRequest(false);
+    }
   }
-  function onApprove(r: DayOffRequest, note?: string) {
-    void approve(r, note);
-    setModal(null);
+  async function onApprove(r: DayOffRequest, note?: string) {
+    setApprovingRequest(true);
+    setApprovingId(r.id);
+    try {
+      const ok = await approve(r, note);
+      if (ok) setModal(null);
+    } finally {
+      setApprovingRequest(false);
+      setApprovingId(null);
+    }
+  }
+  async function onInlineApprove(r: DayOffRequest) {
+    setApprovingId(r.id);
+    try {
+      await approve(r);
+    } finally {
+      setApprovingId(null);
+    }
   }
   function onReject(r: DayOffRequest, reason?: string) {
     void reject(r, reason);
@@ -102,6 +124,15 @@ export function DayOffView() {
   function onCancelRequest(r: DayOffRequest) {
     void cancelRequest(r);
     setModal(null);
+  }
+
+  if (!notConfigured && loading) {
+    return (
+      <div className="app app-loading" role="status" aria-live="polite">
+        <MiniLoader size={36} />
+        <p>{t('common.loading')}</p>
+      </div>
+    );
   }
 
   if (notConfigured) {
@@ -189,9 +220,9 @@ export function DayOffView() {
         )}
         {activeTab === 'approvals' && (
           <ApprovalsView
-            currentUserId={currentUser.id}
             onOpenRequest={(r) => setModal({ kind: 'detail', request: r, asManager: true })}
-            onApprove={(r) => onApprove(r)}
+            onApprove={onInlineApprove}
+            approvingId={approvingId}
             onReject={(r) => setModal({ kind: 'reject', request: r })}
             onApproveAll={onApproveAll}
           />
@@ -212,6 +243,7 @@ export function DayOffView() {
           initial={modal.initial}
           onClose={() => setModal(null)}
           onSubmit={onSubmitRequest}
+          busy={submittingRequest}
         />
       )}
       {modal?.kind === 'detail' && (
@@ -237,6 +269,7 @@ export function DayOffView() {
           request={modal.request}
           onClose={() => setModal({ kind: 'detail', request: modal.request, asManager: true })}
           onConfirm={(r, note) => onApprove(r, note)}
+          busy={approvingRequest}
         />
       )}
       {modal?.kind === 'drill' && (

@@ -22,6 +22,13 @@ export function fromKey(s: DayKey): Date {
   return dt;
 }
 
+/** True when a [start, end] day-key range overlaps any day in `year`. */
+export function rangeOverlapsYear(start: DayKey, end: DayKey, year: number): boolean {
+  const yStart = `${year}-01-01`;
+  const yEnd = `${year}-12-31`;
+  return start <= yEnd && end >= yStart;
+}
+
 export function addDays(d: Date, n: number): Date {
   const r = new Date(d);
   r.setDate(r.getDate() + n);

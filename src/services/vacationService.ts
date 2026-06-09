@@ -19,7 +19,9 @@ import {
   parsePeople,
   formatPeople,
   parseStatusText,
+  parseStatusIndex,
   formatStatusLabel,
+  formatStatusIndex,
   formatLongText,
   parseDateText,
   formatDate,
@@ -28,9 +30,9 @@ import {
   formatCheckbox,
   parseFile,
 } from './columnMap';
-import { workdaysBetween } from '../domain/dates';
+import { rangeOverlapsYear, workdaysBetween } from '../domain/dates';
 import type { ColumnValues } from './mondayApi';
-import type { VacationColumnMap, TypeValueMap, StatusValueMap, KindValueMap } from '../types';
+import type { VacationColumnMap, StatusValueMap, KindValueMap, PersonalTypeOption } from '../types';
 import type {
   AbsenceType,
   RequestStatus,
@@ -40,13 +42,12 @@ import type {
   CompanyDayDraft,
   DayKey,
 } from '../domain/types';
-import { TYPE_ORDER } from '../domain/absence';
 
 export interface VacationCtx {
   boardId: string;
   cols: VacationColumnMap;
   kindValues: KindValueMap;
-  typeValues: TypeValueMap;
+  personalTypes: PersonalTypeOption[];
   statusValues: StatusValueMap;
 }
 
@@ -66,14 +67,37 @@ interface RawItem {
   column_values?: RawColumnValue[] | null;
 }
 
-const ENTRIES_QUERY = `query ($id: [ID!], $cursor: String) {
+function entryColumnIds(cols: VacationColumnMap): string[] {
+  return [...new Set(Object.values(cols).filter((id): id is string => typeof id === 'string' && id !== ''))];
+}
+
+/** Board query scoped to items whose date range overlaps `year` (when date columns are mapped). */
+function buildEntriesQuery(ctx: VacationCtx, year: number): string {
+  const columnIds = entryColumnIds(ctx.cols);
+  const colFragment = columnIds.length ? `(ids: ${JSON.stringify(columnIds)})` : '';
+  const startCol = ctx.cols.startDateColumnId;
+  const endCol = ctx.cols.endDateColumnId;
+  const yStart = `${year}-01-01`;
+  const yEnd = `${year}-12-31`;
+  const queryParams =
+    startCol && endCol
+      ? `, query_params: {
+          rules: [
+            { column_id: "${endCol}", compare_value: ["${yStart}"], operator: greater_than_or_equals },
+            { column_id: "${startCol}", compare_value: ["${yEnd}"], operator: lower_than_or_equal }
+          ],
+          operator: and
+        }`
+      : '';
+  return `query ($id: [ID!], $cursor: String) {
   boards(ids: $id) {
-    items_page(limit: 100, cursor: $cursor) {
+    items_page(limit: 100, cursor: $cursor${queryParams}) {
       cursor
-      items { id name created_at column_values { id type text value } }
+      items { id name created_at column_values${colFragment} { id type text value } }
     }
   }
 }`;
+}
 
 /** Reverse-lookup a board label → its enum key (case/whitespace-insensitive). */
 function enumFromLabel<K extends string>(map: Record<K, string>, order: K[], label: string): K | undefined {
@@ -83,6 +107,17 @@ function enumFromLabel<K extends string>(map: Record<K, string>, order: K[], lab
   const lower = want.toLowerCase();
   for (const key of order) if (map[key].trim().toLowerCase() === lower) return key;
   return undefined;
+}
+
+function findPersonalTypeByLabelId(types: PersonalTypeOption[], labelId: number | null): PersonalTypeOption | undefined {
+  if (labelId == null) return undefined;
+  return types.find((opt) => Number(opt.id) === labelId);
+}
+
+function findPersonalTypeByTitle(types: PersonalTypeOption[], title: string): PersonalTypeOption | undefined {
+  const needle = title.trim().toLowerCase();
+  if (!needle) return undefined;
+  return types.find((opt) => opt.title.trim().toLowerCase() === needle);
 }
 
 function byId(item: RawItem): Map<string, RawColumnValue> {
@@ -126,7 +161,10 @@ function mapRequest(ctx: VacationCtx, item: RawItem, get: (id?: string) => RawCo
   if (!start || !end) return null;
 
   const typeLabel = parseStatusText(get(cols.personalTypeColumnId)?.text);
-  const type: AbsenceType = enumFromLabel(ctx.typeValues, TYPE_ORDER, typeLabel) ?? 'vacation';
+  const typeLabelId = parseStatusIndex(get(cols.personalTypeColumnId)?.value);
+  const type = findPersonalTypeByLabelId(ctx.personalTypes, typeLabelId) ?? findPersonalTypeByTitle(ctx.personalTypes, typeLabel);
+  const fallbackId = typeLabelId != null ? `status_label_${typeLabelId}` : 'status_label_unknown';
+  const resolvedType: AbsenceType = type?.id ?? fallbackId;
   const statusLabel = parseStatusText(get(cols.approvalStatusColumnId)?.text);
   const status: RequestStatus = enumFromLabel(ctx.statusValues, STATUS_ORDER, statusLabel) ?? 'pending';
 
@@ -140,7 +178,7 @@ function mapRequest(ctx: VacationCtx, item: RawItem, get: (id?: string) => RawCo
   return {
     id: String(item.id),
     employeeId,
-    type,
+    type: resolvedType,
     start,
     end,
     status,
@@ -159,20 +197,23 @@ function mapCompanyDay(ctx: VacationCtx, item: RawItem, get: (id?: string) => Ra
   const end = parseDateText(get(cols.endDateColumnId)?.text);
   if (!start || !end) return null; // a general day needs a date range
   const mandatory = cols.mandatoryColumnId ? parseCheckbox(get(cols.mandatoryColumnId)?.value) : false;
-  const classification = parseStatusText(get(cols.generalTypeColumnId)?.text) || undefined;
-  return { id: String(item.id), name: item.name ?? '', start, end, mandatory, classification };
+  return { id: String(item.id), name: item.name ?? '', start, end, mandatory };
 }
 
-/** Read the board once and split items into personal requests + general days. */
-export async function listEntries(ctx: VacationCtx): Promise<{ requests: DayOffRequest[]; companyDays: CompanyDay[] }> {
+/** Read board items for `year` and split into personal requests + general days. */
+export async function listEntries(
+  ctx: VacationCtx,
+  year: number = new Date().getFullYear(),
+): Promise<{ requests: DayOffRequest[]; companyDays: CompanyDay[] }> {
   try {
     type Page = { cursor: string | null; items: RawItem[] };
     const items: RawItem[] = [];
     let cursor: string | null = null;
+    const query = buildEntriesQuery(ctx, year);
     do {
       const data: { boards: { items_page: Page }[] } = await mondayApi.query<{
         boards: { items_page: Page }[];
-      }>(ENTRIES_QUERY, { id: [String(ctx.boardId)], cursor });
+      }>(query, { id: [String(ctx.boardId)], cursor });
       const page: Page | undefined = data.boards?.[0]?.items_page;
       if (page?.items) items.push(...page.items);
       cursor = page?.cursor ?? null;
@@ -184,15 +225,15 @@ export async function listEntries(ctx: VacationCtx): Promise<{ requests: DayOffR
       const get = (id?: string) => (id ? byId(item).get(id) : undefined);
       if (isPersonal(ctx, get)) {
         const r = mapRequest(ctx, item, get);
-        if (r) requests.push(r);
+        if (r && rangeOverlapsYear(r.start, r.end, year)) requests.push(r);
       } else {
         const c = mapCompanyDay(ctx, item, get);
-        if (c) companyDays.push(c);
+        if (c && rangeOverlapsYear(c.start, c.end, year)) companyDays.push(c);
       }
     }
     return { requests, companyDays };
   } catch (err) {
-    logger.error('vacationService', 'listEntries failed', err);
+    logger.error('vacationService', 'listEntries failed', { year, err });
     throw err;
   }
 }
@@ -210,17 +251,34 @@ function dateAndWorkdayColumns(cols: VacationColumnMap, start: DayKey, end: DayK
   return out;
 }
 
+function requestItemName(ctx: VacationCtx, employeeLabel: string, draft: RequestDraft): string {
+  const typeMeta = ctx.personalTypes.find((opt) => opt.id === draft.type) ?? ctx.personalTypes[0];
+  const typeLabel = typeMeta?.title?.trim() || draft.type;
+  return `${employeeLabel} - ${typeLabel}`;
+}
+
 function requestDraftColumns(ctx: VacationCtx, draft: RequestDraft): ColumnValues {
-  const { cols, typeValues } = ctx;
+  const { cols, personalTypes } = ctx;
   const out: ColumnValues = { ...dateAndWorkdayColumns(cols, draft.start, draft.end) };
-  if (cols.personalTypeColumnId) out[cols.personalTypeColumnId] = formatStatusLabel(typeValues[draft.type]);
+  if (cols.personalTypeColumnId) {
+    const typeMeta = personalTypes.find((opt) => opt.id === draft.type) ?? personalTypes[0];
+    if (typeMeta) {
+      const labelId = Number(typeMeta.id);
+      if (Number.isFinite(labelId)) out[cols.personalTypeColumnId] = formatStatusIndex(labelId);
+    }
+  }
   if (cols.empNoteColumnId) out[cols.empNoteColumnId] = formatLongText(draft.note ?? '');
   return out;
 }
 
-export async function createRequest(ctx: VacationCtx, employeeId: string, draft: RequestDraft, name?: string): Promise<void> {
+export async function createRequest(
+  ctx: VacationCtx,
+  employeeId: string,
+  draft: RequestDraft,
+  employeeName?: string,
+): Promise<void> {
   const { cols, statusValues, kindValues } = ctx;
-  const itemName = name && name.trim() !== '' ? name : `${employeeId} ${draft.start}`;
+  const itemName = requestItemName(ctx, employeeName?.trim() || employeeId, draft);
   try {
     const columns = requestDraftColumns(ctx, draft);
     if (cols.personColumnId) columns[cols.personColumnId] = formatPeople([employeeId]);
@@ -237,12 +295,19 @@ export async function createRequest(ctx: VacationCtx, employeeId: string, draft:
   }
 }
 
-export async function updateRequest(ctx: VacationCtx, id: string, draft: RequestDraft): Promise<void> {
+export async function updateRequest(
+  ctx: VacationCtx,
+  id: string,
+  draft: RequestDraft,
+  employeeName?: string,
+  employeeId?: string,
+): Promise<void> {
   const { cols, statusValues } = ctx;
   try {
     const columns = requestDraftColumns(ctx, draft);
     if (cols.approvalStatusColumnId) columns[cols.approvalStatusColumnId] = formatStatusLabel(statusValues.pending);
     await mondayApi.updateMultipleColumnValues(ctx.boardId, id, columns);
+    await mondayApi.changeItemName(id, requestItemName(ctx, employeeName?.trim() || employeeId || '', draft));
     if (draft.attachment?.file && cols.fileColumnId) {
       await mondayApi.addFileToColumn(id, cols.fileColumnId, draft.attachment.file);
     }
@@ -330,4 +395,31 @@ export async function deleteCompanyDay(id: string): Promise<void> {
     logger.error('vacationService', 'deleteCompanyDay failed', err);
     throw err;
   }
+}
+
+/** Thrown when a personal-type status label cannot be removed because board items use it. */
+export class PersonalTypeInUseError extends Error {
+  readonly i18nKey = 'settings.personalTypeInUse' as const;
+
+  constructor() {
+    super('settings.personalTypeInUse');
+    this.name = 'PersonalTypeInUseError';
+  }
+}
+
+/** True when at least one board item has the given personal-type label id selected. */
+export async function isPersonalTypeLabelInUse(
+  boardId: string,
+  personalTypeColumnId: string,
+  labelId: string,
+): Promise<boolean> {
+  const numericId = Number(labelId);
+  if (!Number.isFinite(numericId)) return false;
+
+  const items = (await mondayApi.getAllItems(boardId, [personalTypeColumnId])) as RawItem[];
+  for (const item of items) {
+    const cv = item.column_values?.find((c) => c.id === personalTypeColumnId);
+    if (parseStatusIndex(cv?.value) === numericId) return true;
+  }
+  return false;
 }

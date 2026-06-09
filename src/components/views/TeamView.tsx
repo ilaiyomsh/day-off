@@ -3,10 +3,10 @@
  * Ported from the prototype's TeamView + teamRuns + absenceForCell.
  * Data comes from useDayOffData(); dates/labels via useL10n().
  */
-import { Fragment, useEffect, useRef, type CSSProperties } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { useDayOffData } from '../../contexts/DayOffDataProvider';
 import { useL10n } from '../../domain/useL10n';
-import { ABSENCE_TYPES, TYPE_ORDER } from '../../domain/absence';
+import { absenceTypeMeta, TYPE_ORDER } from '../../domain/absence';
 import { fromKey, isWeekend, pad, toKey, todayKey } from '../../domain/dates';
 import type { CompanyDay, DayOffRequest } from '../../domain/types';
 import { Tooltip } from '@vibe/core';
@@ -14,6 +14,80 @@ import { Avatar, CalToolbar } from '../ui';
 
 interface TeamViewProps {
   onOpenRequest: (request: DayOffRequest) => void;
+}
+
+interface TeamBarRun {
+  request: DayOffRequest;
+  type: ReturnType<typeof absenceTypeMeta>;
+  pending: boolean;
+  startDay: number;
+  endDay: number;
+}
+
+/** Gantt bar — label is shown only when the full text fits; otherwise color only. */
+function TeamBar({
+  run,
+  label,
+  empName,
+  onOpen,
+}: {
+  run: TeamBarRun;
+  label: string;
+  empName: string;
+  onOpen: () => void;
+}) {
+  const { t } = useL10n();
+  const barRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const [showLabel, setShowLabel] = useState(false);
+
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    const measure = measureRef.current;
+    if (!bar || !measure) return;
+
+    const update = () => {
+      const paddingX = 20;
+      const gap = run.pending ? 14 : 0;
+      const available = bar.clientWidth - paddingX - gap;
+      setShowLabel(available > 0 && measure.scrollWidth <= available);
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(bar);
+    return () => ro.disconnect();
+  }, [label, run.pending]);
+
+  return (
+    <Tooltip
+      showDelay={0}
+      content={t('views.team.barTitle', {
+        name: empName,
+        type: label,
+        status: run.pending ? t('status.pending') : t('status.approved'),
+      })}
+    >
+      <div
+        ref={barRef}
+        className={`team-bar ${run.pending ? 'pending' : 'approved'}${showLabel ? '' : ' team-bar--no-label'}`}
+        style={
+          {
+            gridColumn: `${run.startDay + 1} / span ${run.endDay - run.startDay + 1}`,
+            gridRow: 1,
+            '--c': run.type.color,
+          } as CSSProperties
+        }
+        onClick={onOpen}
+      >
+        {run.pending && <span className="tb-dot" style={{ background: run.type.color }} />}
+        <span ref={measureRef} className="tb-label-measure" aria-hidden="true">
+          {label}
+        </span>
+        {showLabel && <span className="tb-label">{label}</span>}
+      </div>
+    </Tooltip>
+  );
 }
 
 export function TeamView({ onOpenRequest }: TeamViewProps) {
@@ -35,7 +109,7 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
         const e = r.end > monthEnd ? monthEnd : r.end;
         return {
           request: r,
-          type: ABSENCE_TYPES[r.type],
+          type: absenceTypeMeta(r.type),
           pending: r.status === 'pending',
           startDay: fromKey(s).getDate(),
           endDay: fromKey(e).getDate(),
@@ -85,30 +159,13 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
           );
         })}
         {runs.map((run) => (
-          <Tooltip
+          <TeamBar
             key={run.request.id}
-            showDelay={0}
-            content={t('views.team.barTitle', {
-              name: emp?.name ?? '',
-              type: t(run.type.labelKey),
-              status: run.pending ? t('status.pending') : t('status.approved'),
-            })}
-          >
-            <div
-              className={`team-bar ${run.pending ? 'pending' : 'approved'}`}
-              style={
-                {
-                  gridColumn: `${run.startDay + 1} / span ${run.endDay - run.startDay + 1}`,
-                  gridRow: 1,
-                  '--c': run.type.color,
-                } as CSSProperties
-              }
-              onClick={() => onOpenRequest(run.request)}
-            >
-              {run.pending && <span className="tb-dot" style={{ background: run.type.color }} />}
-              <span className="tb-label">{t(run.type.labelKey)}</span>
-            </div>
-          </Tooltip>
+            run={run}
+            label={t(run.type.labelKey)}
+            empName={emp?.name ?? ''}
+            onOpen={() => onOpenRequest(run.request)}
+          />
         ))}
       </div>
     );
@@ -137,20 +194,24 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
         </div>
       </div>
 
-      <CalToolbar {...nav} monthDate={monthDate} />
-
-      <div className="team-legend">
-        {TYPE_ORDER.map((tid) => (
-          <span className="legend-item" key={tid}>
-            <span className="legend-swatch" style={{ background: ABSENCE_TYPES[tid].color }} />
-            {t(ABSENCE_TYPES[tid].labelKey)}
-          </span>
-        ))}
-        <span className="legend-item">
-          <span className="legend-swatch legend-swatch--pending" />
-          {t('status.pending')}
-        </span>
-      </div>
+      <CalToolbar
+        {...nav}
+        monthDate={monthDate}
+        right={
+          <div className="team-legend">
+            {TYPE_ORDER.map((tid) => (
+              <span className="legend-item" key={tid}>
+                <span className="legend-swatch" style={{ background: absenceTypeMeta(tid).color }} />
+                {t(absenceTypeMeta(tid).labelKey)}
+              </span>
+            ))}
+            <span className="legend-item">
+              <span className="legend-swatch legend-swatch--pending" />
+              {t('status.pending')}
+            </span>
+          </div>
+        }
+      />
 
       <div className="card team-board" ref={boardRef}>
         <div className="team-grid">

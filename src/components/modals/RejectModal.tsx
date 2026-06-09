@@ -20,13 +20,14 @@ export function RejectModal({ request, onClose, onConfirm }: RejectModalProps) {
   const { empById } = useDayOffData();
   const [reason, setReason] = useState('');
   const emp = empById(request.employeeId);
+  const typeMeta = ABSENCE_TYPES[request.type] ?? { id: request.type, labelKey: request.type, color: 'var(--color-primary)', index: 0 };
 
   return (
     <Modal
       title={t('reject.title')}
       sub={
         <>
-          {emp?.name} · {t(ABSENCE_TYPES[request.type].labelKey)}, <Rng start={request.start} end={request.end} />
+          {emp?.name} · {t(typeMeta.labelKey)}, <Rng start={request.start} end={request.end} />
         </>
       }
       onClose={onClose}

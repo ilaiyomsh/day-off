@@ -12,7 +12,7 @@ export interface TypeChipProps {
 
 export function TypeChip({ type }: TypeChipProps) {
   const { t } = useTranslation();
-  const meta = ABSENCE_TYPES[type];
+  const meta = ABSENCE_TYPES[type] ?? { id: type, labelKey: type, color: 'var(--color-primary)', index: 0 };
   return (
     <span className="type-chip">
       <span className="dot" style={{ background: meta.color }} />

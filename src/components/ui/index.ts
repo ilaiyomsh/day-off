@@ -9,6 +9,7 @@ export * from './Avatar';
 export * from './StatusBadge';
 export * from './TypeChip';
 export * from './EmptyState';
+export * from './MiniLoader';
 export * from './PeoplePicker';
 
 // Calendar / modal
@@ -18,6 +19,7 @@ export * from './MonthCalendar';
 export * from './CalToolbar';
 export * from './TypeLegend';
 export * from './YearSelect';
+export * from './DropdownSelect';
 
 // Dashboard widgets
 export * from './Seg';

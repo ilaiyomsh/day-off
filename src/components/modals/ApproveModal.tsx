@@ -10,36 +10,40 @@ import type { DayOffRequest } from '../../domain/types';
 import { ABSENCE_TYPES } from '../../domain/absence';
 import { useL10n } from '../../domain/useL10n';
 import { useDayOffData } from '../../contexts/DayOffDataProvider';
-import { Modal, Icon, Rng } from '../ui';
+import { Modal, Icon, MiniLoader, Rng } from '../ui';
 
 interface ApproveModalProps {
   request: DayOffRequest;
   onClose: () => void;
   onConfirm: (request: DayOffRequest, note: string) => void;
+  busy?: boolean;
 }
 
-export function ApproveModal({ request, onClose, onConfirm }: ApproveModalProps) {
+export function ApproveModal({ request, onClose, onConfirm, busy }: ApproveModalProps) {
   const { t } = useL10n();
   const { empById } = useDayOffData();
   const [note, setNote] = useState('');
   const emp = empById(request.employeeId);
+  const typeMeta = ABSENCE_TYPES[request.type] ?? { id: request.type, labelKey: request.type, color: 'var(--color-primary)', index: 0 };
 
   return (
     <Modal
       title={t('approve.title')}
       sub={
         <>
-          {emp?.name} · {t(ABSENCE_TYPES[request.type].labelKey)}, <Rng start={request.start} end={request.end} />
+          {emp?.name} · {t(typeMeta.labelKey)}, <Rng start={request.start} end={request.end} />
         </>
       }
       onClose={onClose}
+      busy={busy}
       footer={
         <>
-          <button className="btn btn-secondary" onClick={onClose}>
+          <button className="btn btn-secondary" onClick={onClose} disabled={busy}>
             {t('common.back')}
           </button>
-          <button className="btn btn-approve" onClick={() => onConfirm(request, note.trim())}>
-            <Icon name="check" size={16} /> {t('approve.confirm')}
+          <button className="btn btn-approve" disabled={busy} onClick={() => onConfirm(request, note.trim())}>
+            {busy ? <MiniLoader size={15} /> : <Icon name="check" size={16} />}
+            {t('approve.confirm')}
           </button>
         </>
       }

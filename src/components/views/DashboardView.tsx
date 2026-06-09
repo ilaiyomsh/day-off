@@ -1,8 +1,6 @@
 /**
- * DashboardView — manager dashboard. Breakdown of absence days by time
- * (month / quarter) and by employee, utilization vs. quota, with click-to-drill.
- * Ported from dashboard.jsx; data comes from useDayOffData() + domain/absence
- * analytics instead of window.DayOffData.
+ * DashboardView — manager dashboard. Breakdown by time (months/quarters) and by
+ * employee, with KPI cards scoped by fixed year/month dropdowns.
  */
 import { useMemo, useState, type ReactElement } from 'react';
 import { ABSENCE_TYPES, TYPE_ORDER } from '../../domain/absence';
@@ -10,7 +8,7 @@ import { eachDay, fromKey, isWeekend, toKey } from '../../domain/dates';
 import { useL10n } from '../../domain/useL10n';
 import type { AbsenceType, DayOffRequest } from '../../domain/types';
 import { useDayOffData } from '../../contexts/DayOffDataProvider';
-import { Avatar, ChartLegend, EmpFilter, EmptyState, KpiCard, Seg, YearSelect } from '../ui';
+import { Avatar, ChartLegend, DropdownSelect, EmpFilter, EmptyState, KpiCard, Seg } from '../ui';
 
 /** Payload handed to the drill-down modal: the requests behind a clicked number. */
 export interface DrillPayload {
@@ -25,11 +23,9 @@ interface DashboardViewProps {
   onOpenDrill: (payload: DrillPayload) => void;
 }
 
-const ORDER = TYPE_ORDER;
-
 /* ---------- analytics helpers ---------- */
 // Workday date-keys of a request that fall inside `year`.
-function reqWorkdaysInYear(r: DayOffRequest, year: number): string[] {
+function reqWorkdaysInYear(r: Pick<DayOffRequest, 'start' | 'end'>, year: number): string[] {
   const yStart = `${year}-01-01`;
   const yEnd = `${year}-12-31`;
   if (r.end < yStart || r.start > yEnd) return [];
@@ -42,23 +38,24 @@ interface Cell {
   a: number;
   p: number;
 }
-type Cells = Record<AbsenceType, Cell>;
+type Cells = Record<string, Cell>;
 
-function emptyCells(): Cells {
-  return { vacation: { a: 0, p: 0 }, sick: { a: 0, p: 0 }, reserves: { a: 0, p: 0 } };
+function emptyCells(order: string[]): Cells {
+  const out: Cells = {};
+  for (const id of order) out[id] = { a: 0, p: 0 };
+  return out;
 }
-function cellsTotal(c: Cells): number {
-  return ORDER.reduce((s, t) => s + c[t].a + c[t].p, 0);
+function cellsTotal(c: Cells, order: string[]): number {
+  return order.reduce((s, t) => s + (c[t]?.a ?? 0) + (c[t]?.p ?? 0), 0);
 }
-function cellsApproved(c: Cells): number {
-  return ORDER.reduce((s, t) => s + c[t].a, 0);
-}
-function cellsPending(c: Cells): number {
-  return ORDER.reduce((s, t) => s + c[t].p, 0);
-}
-function mergeCells(list: Cells[]): Cells {
-  const out = emptyCells();
-  list.forEach((c) => ORDER.forEach((t) => { out[t].a += c[t].a; out[t].p += c[t].p; }));
+function mergeCells(list: Cells[], order: string[]): Cells {
+  const out = emptyCells(order);
+  list.forEach((c) =>
+    order.forEach((t) => {
+      out[t].a += c[t]?.a ?? 0;
+      out[t].p += c[t]?.p ?? 0;
+    }),
+  );
   return out;
 }
 function niceCeil(v: number): number {
@@ -73,20 +70,35 @@ const QUARTER_MONTHS: number[][] = [
   [6, 7, 8],
   [9, 10, 11],
 ];
+const DASHBOARD_YEAR_START = 2025;
+const DASHBOARD_YEAR_END = 2040;
 
-type TypeFilter = 'all' | AbsenceType;
+type TypeFilter = 'all' | string;
 type Grouping = 'months' | 'quarters';
+type KpiMonthFilter = 'all' | `${number}`;
+
+function reqWorkdaysInRange(r: Pick<DayOffRequest, 'start' | 'end'>, start: string, end: string): string[] {
+  if (r.end < start || r.start > end) return [];
+  const s = r.start < start ? start : r.start;
+  const e = r.end > end ? end : r.end;
+  return eachDay(s, e).filter((k) => !isWeekend(fromKey(k)));
+}
+
+function rangeEndOfMonth(year: number, month: number): string {
+  return toKey(new Date(year, month + 1, 0));
+}
 
 /* ============================================================
    Dashboard view
    ============================================================ */
 export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardViewProps) {
-  const { t, monthShort } = useL10n();
-  const { requests, teamIds, myTeams, empById, balanceFor, years } = useDayOffData();
+  const { t, monthShort, monthName } = useL10n();
+  const { requests, companyDays, teamIds, myTeams, empById } = useDayOffData();
+  const order = TYPE_ORDER;
   const [grouping, setGrouping] = useState<Grouping>('months');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [empFilter, setEmpFilter] = useState<string>('all');
-  const todayKey = toKey(new Date());
+  const [kpiMonthFilter, setKpiMonthFilter] = useState<KpiMonthFilter>('all');
 
   // The member-id universe the dashboard considers: all visible members, a
   // single team (`team:<id>`), or one employee.
@@ -108,60 +120,60 @@ export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardView
   );
 
   // aggregate into month + employee cells
-  const monthCells = Array.from({ length: 12 }, emptyCells);
-  const empCells: Record<string, Cells> = {};
+  const monthCells = Array.from({ length: 12 }, () => emptyCells(order));
   filteredReqs.forEach((r) => {
     reqWorkdaysInYear(r, year).forEach((k) => {
       const m = fromKey(k).getMonth();
       const st: 'a' | 'p' = r.status === 'pending' ? 'p' : 'a';
+      if (!monthCells[m][r.type]) monthCells[m][r.type] = { a: 0, p: 0 };
       monthCells[m][r.type][st] += 1;
-      (empCells[r.employeeId] || (empCells[r.employeeId] = emptyCells()))[r.type][st] += 1;
     });
   });
 
-  const yearTotal = mergeCells(monthCells);
-  const totalDays = cellsTotal(yearTotal);
-  const approvedDays = cellsApproved(yearTotal);
-  const pendingDays = cellsPending(yearTotal);
-
-  // KPI: pending requests count (filtered)
-  const pendingReqs = filteredReqs.filter((r) => r.status === 'pending');
-
-  // KPI: who's off today (approved, respects type/emp filter)
-  const offTodayIds = universe.filter((id) =>
-    requests.some((r) => r.employeeId === id && r.status === 'approved' &&
-      todayKey >= r.start && todayKey <= r.end && (typeFilter === 'all' || r.type === typeFilter)));
-
-  // KPI: average vacation-quota utilization
-  const utilType: AbsenceType = typeFilter === 'all' ? 'vacation' : typeFilter;
-  const utilLabel = t(ABSENCE_TYPES[utilType].labelKey);
-  const utilUniverse = universe;
-  const utilRows = utilUniverse
-    .map((id) => {
-      const b = balanceFor(year, id, utilType);
-      return { id, ...b, pct: b.entitled > 0 ? b.used / b.entitled : null };
-    })
-    .filter((r): r is { id: string; entitled: number; used: number; pending: number; pct: number } => r.pct !== null)
-    .sort((a, b) => b.pct - a.pct);
-  const avgUtil = utilRows.length ? Math.round(utilRows.reduce((s, r) => s + r.pct, 0) / utilRows.length * 100) : 0;
+  const yearTotal = mergeCells(monthCells, order);
+  const chartTotalDays = cellsTotal(yearTotal, order);
+  const kpiMonth = kpiMonthFilter === 'all' ? null : Number(kpiMonthFilter);
+  const kpiStart = kpiMonth === null ? `${year}-01-01` : `${year}-${String(kpiMonth + 1).padStart(2, '0')}-01`;
+  const kpiEnd = kpiMonth === null ? `${year}-12-31` : rangeEndOfMonth(year, kpiMonth);
+  // KPI scope: year OR a selected month of that year.
+  const periodReqs = requests.filter((r) =>
+    universe.includes(r.employeeId) &&
+    (r.status === 'approved' || r.status === 'pending') &&
+    (typeFilter === 'all' || r.type === typeFilter) &&
+    reqWorkdaysInRange(r, kpiStart, kpiEnd).length > 0
+  );
+  const totalDays = periodReqs.reduce((s, r) => s + reqWorkdaysInRange(r, kpiStart, kpiEnd).length, 0);
+  const pendingReqs = periodReqs.filter((r) => r.status === 'pending');
+  const companyDaysTotal = companyDays.reduce((s, d) => s + reqWorkdaysInRange({ start: d.start, end: d.end }, kpiStart, kpiEnd).length, 0);
 
   // chart buckets
   const buckets = grouping === 'months'
     ? monthCells.map((c, m) => ({ label: monthShort(m), cells: c, months: [m] }))
     : QUARTER_MONTHS.map((months, i) => ({
         label: t('views.dashboard.quarter', { count: i + 1 }),
-        cells: mergeCells(months.map((m) => monthCells[m])),
+        cells: mergeCells(months.map((m) => monthCells[m]), order),
         months,
       }));
-  const maxBucket = Math.max(1, ...buckets.map((b) => cellsTotal(b.cells)));
+  const maxBucket = Math.max(1, ...buckets.map((b) => cellsTotal(b.cells, order)));
   const niceMax = niceCeil(maxBucket);
   const PLOT = 200;
   const scale = PLOT / niceMax;
 
   // employee rows
-  const empUniverse = universe;
-  const empRows = empUniverse
-    .map((id) => ({ id, cells: empCells[id] || emptyCells(), total: cellsTotal(empCells[id] || emptyCells()) }))
+  const periodEmpCells: Record<string, Cells> = {};
+  periodReqs.forEach((r) => {
+    reqWorkdaysInRange(r, kpiStart, kpiEnd).forEach(() => {
+      const st: 'a' | 'p' = r.status === 'pending' ? 'p' : 'a';
+      const cells = periodEmpCells[r.employeeId] || (periodEmpCells[r.employeeId] = emptyCells(order));
+      if (!cells[r.type]) cells[r.type] = { a: 0, p: 0 };
+      cells[r.type][st] += 1;
+    });
+  });
+  const empRows = universe
+    .map((id) => {
+      const cells = periodEmpCells[id] || emptyCells(order);
+      return { id, cells, total: cellsTotal(cells, order) };
+    })
     .sort((a, b) => b.total - a.total);
   const maxEmp = Math.max(1, ...empRows.map((r) => r.total));
 
@@ -175,13 +187,25 @@ export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardView
   }
   function drillEmp(id: string) {
     const e = empById(id);
-    const reqs = filteredReqs.filter((r) => r.employeeId === id).slice().sort((a, b) => a.start.localeCompare(b.start));
+    const reqs = periodReqs.filter((r) => r.employeeId === id).slice().sort((a, b) => a.start.localeCompare(b.start));
     onOpenDrill({ title: `${e?.name} · ${year}`, sub: t('drill.requestsCount', { count: reqs.length }), requests: reqs });
   }
 
   const typeOptions = [
     { value: 'all' as const, label: t('common.all') },
-    ...ORDER.map((type) => ({ value: type, label: t(ABSENCE_TYPES[type].labelKey), color: ABSENCE_TYPES[type].color })),
+    ...order.map((type) => {
+      const meta = ABSENCE_TYPES[type] ?? { id: type, labelKey: type, color: 'var(--color-primary)', index: 0 };
+      return { value: type, label: t(meta.labelKey), color: meta.color };
+    }),
+  ];
+  const yearOptions = Array.from(
+    { length: DASHBOARD_YEAR_END - DASHBOARD_YEAR_START + 1 },
+    (_, i) => DASHBOARD_YEAR_START + i,
+  )
+    .map((y) => ({ value: y, label: String(y) }));
+  const monthOptions = [
+    { value: 'all' as const, label: t('views.dashboard.allYear') },
+    ...Array.from({ length: 12 }, (_, idx) => ({ value: String(idx) as KpiMonthFilter, label: monthName(idx) })),
   ];
 
   return (
@@ -189,47 +213,44 @@ export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardView
       <div className="page-head">
         <div>
           <h2>{t('views.dashboard.title')}</h2>
-          <div className="sub">{t('views.dashboard.sub', { year, count: teamIds.length })}</div>
-        </div>
-        <div className="head-actions">
-          <YearSelect year={year} years={years} onChange={onYearChange} />
         </div>
       </div>
 
       {/* filters */}
-      <div className="dash-filters">
-        <span className="filter-label">{t('views.dashboard.filterType')}</span>
-        <Seg value={typeFilter} options={typeOptions} onChange={setTypeFilter} />
-        <span className="filter-label" style={{ marginInlineStart: 8 }}>{t('views.dashboard.filterEmployee')}</span>
-        <EmpFilter value={empFilter} onChange={setEmpFilter} />
+      <div className="dash-filters dash-filters-main">
+        <div className="dash-filters-side dash-filters-side--right">
+          <span className="filter-label">{t('views.dashboard.filterType')}</span>
+          <Seg value={typeFilter} options={typeOptions} onChange={setTypeFilter} />
+          <span className="filter-label">{t('views.dashboard.filterEmployee')}</span>
+          <EmpFilter value={empFilter} onChange={setEmpFilter} />
+        </div>
+        <div className="dash-filters-side dash-filters-side--left">
+          <span className="filter-label">{t('views.dashboard.filterYear')}</span>
+          <DropdownSelect
+            value={year}
+            options={yearOptions}
+            onChange={onYearChange}
+            icon="calendar"
+            scrollSelectedToTopOnOpen
+          />
+          <span className="filter-label">{t('views.dashboard.filterMonth')}</span>
+          <DropdownSelect value={kpiMonthFilter} options={monthOptions} onChange={setKpiMonthFilter} icon="calendar" />
+        </div>
       </div>
 
       {/* KPI cards */}
       <div className="kpi-grid">
         <KpiCard
-          label={t('views.dashboard.kpiTotal')} icon="calendar" accent="var(--color-primary)"
+          label={t('views.dashboard.kpiTotal')} accent="var(--color-primary)"
           value={totalDays} unit={t('views.dashboard.kpiTotalUnit')}
-          foot={<>
-            <span>{t('views.dashboard.kpiApproved', { count: approvedDays })}</span>
-            {pendingDays > 0 && <span className="kpi-pending-dot">{t('views.dashboard.kpiPending', { count: pendingDays })}</span>}
-          </>}
         />
         <KpiCard
-          label={t('views.dashboard.kpiOffToday')} icon="user" accent="var(--color-event-reserves)"
-          value={offTodayIds.length}
-          foot={offTodayIds.length
-            ? <div className="av-stack">{offTodayIds.slice(0, 5).map((id) => <Avatar key={id} emp={empById(id)} size="sm" />)}</div>
-            : <span>{t('views.dashboard.kpiAllPresent')}</span>}
-        />
-        <KpiCard
-          label={t('views.dashboard.kpiPendingApproval')} icon="inbox" accent="var(--color-warning)"
+          label={t('views.dashboard.kpiPendingApproval')} accent="var(--color-warning)"
           value={pendingReqs.length}
-          foot={pendingReqs.length ? <span>{t('views.dashboard.kpiPendingDays', { count: pendingDays })}</span> : <span>{t('views.dashboard.kpiNoOpen')}</span>}
         />
         <KpiCard
-          label={t('views.dashboard.kpiUtil', { type: utilLabel })} icon="chart" accent="var(--color-event-vacation)"
-          value={avgUtil} unit={t('views.dashboard.kpiUtilUnit')}
-          foot={<span>{t('views.dashboard.kpiUtilFoot', { year })}</span>}
+          label={t('views.dashboard.kpiCompanyDays')} accent="var(--color-event-holiday)"
+          value={companyDaysTotal} unit={t('views.dashboard.kpiTotalUnit')}
         />
       </div>
 
@@ -238,7 +259,6 @@ export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardView
         <div className="dash-card-head">
           <div>
             <h3>{t('views.dashboard.byTimeTitle')}</h3>
-            <div className="dch-sub">{t('views.dashboard.byTimeSub')}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)', flexWrap: 'wrap' }}>
             <ChartLegend />
@@ -252,33 +272,46 @@ export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardView
             />
           </div>
         </div>
-        {totalDays === 0 ? (
+        {chartTotalDays === 0 ? (
           <EmptyState icon="chart" title={t('views.dashboard.byTimeEmptyTitle')} sub={t('views.dashboard.byTimeEmptySub')} />
         ) : (
           <>
             <div className="bars">
               {buckets.map((b, i) => {
-                const tot = cellsTotal(b.cells);
-                const segs = ORDER.flatMap((type) => {
-                  const c = b.cells[type], col = ABSENCE_TYPES[type].color, out: { k: string; h: number; color: string; pending: boolean }[] = [];
-                  if (c.a > 0) out.push({ k: type + 'a', h: c.a * scale, color: col, pending: false });
-                  if (c.p > 0) out.push({ k: type + 'p', h: c.p * scale, color: col, pending: true });
+                const tot = cellsTotal(b.cells, order);
+                const segs = order.flatMap((type) => {
+                  const c = b.cells[type] ?? { a: 0, p: 0 };
+                  const out: { k: string; h: number; color: string; pending: boolean; type: AbsenceType; count: number }[] = [];
+                  const meta = ABSENCE_TYPES[type] ?? { id: type, labelKey: type, color: 'var(--color-primary)', index: 0 };
+                  const col = meta.color;
+                  if (c.a > 0) out.push({ k: type + 'a', h: c.a * scale, color: col, pending: false, type, count: c.a });
+                  if (c.p > 0) out.push({ k: type + 'p', h: c.p * scale, color: col, pending: true, type, count: c.p });
                   return out;
                 });
-                const title = `${t('views.dashboard.barTitleTotal', { label: b.label, count: tot })}\n` + ORDER.map((type) => {
-                  const c = b.cells[type];
+                const title = `${t('views.dashboard.barTitleTotal', { label: b.label, count: tot })}\n` + order.map((type) => {
+                  const c = b.cells[type] ?? { a: 0, p: 0 };
                   const n = c.a + c.p;
                   if (!n) return null;
+                  const meta = ABSENCE_TYPES[type] ?? { id: type, labelKey: type, color: 'var(--color-primary)', index: 0 };
+                  const label = t(meta.labelKey);
                   return c.p
-                    ? t('views.dashboard.barTypePending', { type: t(ABSENCE_TYPES[type].labelKey), count: n, pending: c.p })
-                    : t('views.dashboard.barTypeLine', { type: t(ABSENCE_TYPES[type].labelKey), count: n });
+                    ? t('views.dashboard.barTypePending', { type: label, count: n, pending: c.p })
+                    : t('views.dashboard.barTypeLine', { type: label, count: n });
                 }).filter(Boolean).join(' · ');
                 return (
                   <button key={i} className="bar-col" title={title} onClick={() => drillMonths(b.months, b.label)}>
-                    <span className={`bar-val ${tot === 0 ? 'empty' : ''}`}>{tot || '0'}</span>
-                    <div className="bar-track">
+                    <span className={`bar-val ${tot === 0 ? 'empty' : ''}`}>{tot > 0 ? tot : ''}</span>
+                    <div className="bar-track" style={{ height: Math.max(2, tot * scale) }}>
                       {segs.map((s) => (
-                        <div key={s.k} className={`bar-seg ${s.pending ? 'pending' : ''}`} style={{ height: Math.max(2, s.h), background: s.color }} />
+                        <div
+                          key={s.k}
+                          className={`bar-seg ${s.pending ? 'pending' : ''}`}
+                          title={t('views.dashboard.barSegTooltip', {
+                            type: t((ABSENCE_TYPES[s.type] ?? { labelKey: s.type }).labelKey),
+                            count: s.count,
+                          })}
+                          style={{ height: Math.max(2, s.h), background: s.color }}
+                        />
                       ))}
                     </div>
                     <span className="bar-x">{b.label}</span>
@@ -291,13 +324,12 @@ export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardView
         )}
       </div>
 
-      {/* by employee + utilization */}
+      {/* by employee */}
       <div className="dash-2col">
         <div className="card dash-card">
           <div className="dash-card-head">
             <div>
               <h3>{t('views.dashboard.byEmpTitle')}</h3>
-              <div className="dch-sub">{t('views.dashboard.byEmpSub')}</div>
             </div>
           </div>
           {empRows.some((r) => r.total > 0) ? (
@@ -308,8 +340,9 @@ export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardView
                   <div key={row.id} className="emp-row" onClick={() => drillEmp(row.id)} title={`${e?.name}: ${t('common.days', { count: row.total })}`}>
                     <div className="emp-name"><Avatar emp={e} size="sm" /><span>{e?.name}</span></div>
                     <div className="emp-bar">
-                      {ORDER.flatMap((type) => {
-                        const c = row.cells[type], col = ABSENCE_TYPES[type].color, out: ReactElement[] = [];
+                      {order.flatMap((type) => {
+                        const meta = ABSENCE_TYPES[type] ?? { id: type, labelKey: type, color: 'var(--color-primary)', index: 0 };
+                        const c = row.cells[type], col = meta.color, out: ReactElement[] = [];
                         if (c.a > 0) out.push(<div key={type + 'a'} className="emp-seg" style={{ width: (c.a / maxEmp * 100) + '%', background: col }} />);
                         if (c.p > 0) out.push(<div key={type + 'p'} className="emp-seg pending" style={{ width: (c.p / maxEmp * 100) + '%', background: col }} />);
                         return out;
@@ -321,36 +354,6 @@ export function DashboardView({ year, onYearChange, onOpenDrill }: DashboardView
               })}
             </div>
           ) : <EmptyState icon="users" title={t('views.dashboard.byEmpEmptyTitle')} sub={t('views.dashboard.byEmpEmptySub')} />}
-        </div>
-
-        <div className="card dash-card">
-          <div className="dash-card-head">
-            <div>
-              <h3>{t('views.dashboard.utilTitle')}</h3>
-              <div className="dch-sub">{t('views.dashboard.utilSub', { type: utilLabel })}</div>
-            </div>
-          </div>
-          {utilRows.length ? (
-            <div className="util-list">
-              {utilRows.map((row) => {
-                const e = empById(row.id);
-                const pct = Math.round(row.pct * 100);
-                const remaining = row.entitled - row.used;
-                const color = ABSENCE_TYPES[utilType].color;
-                return (
-                  <div key={row.id} className="util-row">
-                    <div className="util-name"><Avatar emp={e} size="sm" /><span>{e?.name}</span></div>
-                    <div className="util-mid">
-                      <div className="util-meter"><div className="fill" style={{ width: Math.min(100, pct) + '%', background: color }} /></div>
-                      <div className="util-fig">{t('views.dashboard.utilFig', { used: row.used, entitled: row.entitled })}<span className="row-dot" />{t('views.dashboard.utilRemaining', { count: remaining })}</div>
-                    </div>
-                    {row.pct >= 0.8 && <span className="util-tag warn">{t('views.dashboard.utilNearMax')}</span>}
-                    {row.pct < 0.25 && <span className="util-tag low">{t('views.dashboard.utilLow')}</span>}
-                  </div>
-                );
-              })}
-            </div>
-          ) : <EmptyState icon="calendar" title={t('views.dashboard.utilEmptyTitle')} sub={t('views.dashboard.utilEmptySub', { type: utilLabel })} />}
         </div>
       </div>
     </div>

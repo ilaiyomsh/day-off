@@ -29,8 +29,8 @@ import type {
   Entitlement,
   RequestDraft,
 } from '../domain/types';
-import type { Team } from '../types';
-import { computeBalance, pendingDaysFor as pendingDaysForDomain, requestYear } from '../domain/absence';
+import type { Team, PersonalTypeOption } from '../types';
+import { applyRuntimeAbsenceTypes, computeBalance, pendingDaysFor as pendingDaysForDomain, requestYear } from '../domain/absence';
 import { todayKey } from '../domain/dates';
 import {
   listEntries,
@@ -78,8 +78,8 @@ export interface DayOffData {
   balanceFor: (year: number, empId: string, type: AbsenceType) => Balance;
   pendingDaysFor: (empId: string, type: AbsenceType, year: number) => number;
   holidaysOnKey: (dateKey: string) => CompanyDay[];
-  submitRequest: (draft: RequestDraft, editingId?: string) => Promise<void>;
-  approve: (r: DayOffRequest, note?: string) => Promise<void>;
+  submitRequest: (draft: RequestDraft, editingId?: string) => Promise<boolean>;
+  approve: (r: DayOffRequest, note?: string) => Promise<boolean>;
   reject: (r: DayOffRequest, reason?: string) => Promise<void>;
   approveAll: () => Promise<void>;
   cancelRequest: (r: DayOffRequest) => Promise<void>;
@@ -96,9 +96,16 @@ export interface DayOffData {
 const Ctx = createContext<DayOffData | null>(null);
 
 const TOAST_TTL_MS = 2800;
+const MIN_SELECTABLE_YEAR = 2025;
+const MAX_SELECTABLE_YEAR = 2040;
 
 /** Stable empty entitlements list (yearly quotas were removed). */
 const EMPTY_ENTITLEMENTS: Entitlement[] = [];
+const LEGACY_PERSONAL_TYPES: PersonalTypeOption[] = [
+  { id: 'vacation', title: 'types.vacation', color: 'var(--color-event-vacation)', index: 1 },
+  { id: 'sick', title: 'types.sick', color: 'var(--color-event-sick)', index: 2 },
+  { id: 'reserves', title: 'types.reserves', color: 'var(--color-event-reserves)', index: 3 },
+];
 
 /** Minimal Employee fallback when the monday users API can't resolve the signed-in user. */
 function fallbackEmployee(id: string, name: string): Employee {
@@ -133,14 +140,21 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
   // ---- service context (one board; rebuilt when settings change) ----
   const vacCtx = useMemo<VacationCtx | null>(() => {
     if (!settings.vacationBoardId) return null;
+    const savedPersonalTypes = settings.personalTypes ?? [];
+    const personalTypes = savedPersonalTypes.length ? savedPersonalTypes : LEGACY_PERSONAL_TYPES;
     return {
       boardId: settings.vacationBoardId,
       cols: settings.columns,
       kindValues: settings.kindValues,
-      typeValues: settings.typeValues,
+      personalTypes,
       statusValues: settings.statusValues,
     };
-  }, [settings.vacationBoardId, settings.columns, settings.kindValues, settings.typeValues, settings.statusValues]);
+  }, [settings.vacationBoardId, settings.columns, settings.kindValues, settings.personalTypes, settings.statusValues]);
+
+  useEffect(() => {
+    const savedPersonalTypes = settings.personalTypes ?? [];
+    applyRuntimeAbsenceTypes(savedPersonalTypes.length ? savedPersonalTypes : LEGACY_PERSONAL_TYPES);
+  }, [settings.personalTypes]);
 
   // ---- teams + derived role/universe selectors ----
   const teams = settings.teams;
@@ -191,10 +205,10 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
       setCompanyDays([]);
       return;
     }
-    const { requests: reqs, companyDays: days } = await listEntries(vacCtx);
+    const { requests: reqs, companyDays: days } = await listEntries(vacCtx, year);
     setRequests(reqs);
     setCompanyDays(days);
-  }, [vacCtx]);
+  }, [vacCtx, year]);
 
   const loadTeam = useCallback(async () => {
     if (!allMemberIds.length) {
@@ -219,27 +233,27 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
     setCurrentUser(resolved ?? fallbackEmployee(id, name));
   }, [mondayUser.id, mondayUser.name]);
 
-  // ---- initial parallel load ----
+  // ---- entries load (gates the app until the selected year's days are ready) ----
   useEffect(() => {
     let cancelled = false;
-    // Kick off (re)load whenever the board config changes — standard async-load pattern.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
-    const guard = (op: string, p: Promise<unknown>) =>
-      p.catch((err) => handleError(err, { operation: `DayOffData.${op}` }));
-
-    void Promise.allSettled([
-      guard('loadEntries', loadEntries()),
-      guard('loadTeam', loadTeam()),
-      guard('resolveCurrentUser', resolveCurrentUser()),
-    ]).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
-
+    void loadEntries()
+      .catch((err) => handleError(err, { operation: 'DayOffData.loadEntries' }))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [loadEntries, loadTeam, resolveCurrentUser, handleError]);
+  }, [loadEntries, handleError]);
+
+  // ---- team + current user (background; does not block the shell) ----
+  useEffect(() => {
+    const guard = (op: string, p: Promise<unknown>) =>
+      p.catch((err) => handleError(err, { operation: `DayOffData.${op}` }));
+    void Promise.allSettled([guard('loadTeam', loadTeam()), guard('resolveCurrentUser', resolveCurrentUser())]);
+  }, [loadTeam, resolveCurrentUser, handleError]);
 
   // ---- board-owner check (settings access) ----
   useEffect(() => {
@@ -276,6 +290,7 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
 
   const years = useMemo(() => {
     const set = new Set<number>();
+    for (let y = MIN_SELECTABLE_YEAR; y <= MAX_SELECTABLE_YEAR; y += 1) set.add(y);
     set.add(today.getFullYear());
     for (const r of requests) set.add(requestYear(r));
     for (const e of entitlements) set.add(e.year);
@@ -314,33 +329,37 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
 
   // ---- mutations: API write -> re-fetch affected list -> toast ----
   const submitRequest = useCallback(
-    async (draft: RequestDraft, editingId?: string) => {
-      if (!vacCtx) return;
+    async (draft: RequestDraft, editingId?: string): Promise<boolean> => {
+      if (!vacCtx) return false;
       try {
         if (editingId) {
-          await updateRequest(vacCtx, editingId, draft);
+          await updateRequest(vacCtx, editingId, draft, currentUser.name, currentUser.id);
         } else {
-          await createRequest(vacCtx, currentUser.id, draft);
+          await createRequest(vacCtx, currentUser.id, draft, currentUser.name);
         }
         await loadEntries();
         toast(editingId ? t('toasts.requestUpdated') : t('toasts.requestSent'), 'success');
+        return true;
       } catch (err) {
         handleError(err, { operation: 'DayOffData.submitRequest' });
+        return false;
       }
     },
-    [vacCtx, currentUser.id, loadEntries, toast, t, handleError],
+    [vacCtx, currentUser.id, currentUser.name, loadEntries, toast, t, handleError],
   );
 
   const approve = useCallback(
-    async (r: DayOffRequest, note?: string) => {
-      if (!vacCtx) return;
+    async (r: DayOffRequest, note?: string): Promise<boolean> => {
+      if (!vacCtx) return false;
       const mn = note && note.trim() ? note.trim() : undefined;
       try {
         await setStatus(vacCtx, r.id, 'approved', currentUser.id, todayKey(), mn);
         await loadEntries();
         toast(t('toasts.requestApproved'), 'success');
+        return true;
       } catch (err) {
         handleError(err, { operation: 'DayOffData.approve' });
+        return false;
       }
     },
     [vacCtx, currentUser.id, loadEntries, toast, t, handleError],
@@ -363,7 +382,7 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
 
   const approveAll = useCallback(async () => {
     if (!vacCtx) return;
-    const pend = requests.filter((r) => r.status === 'pending' && r.employeeId !== currentUser.id);
+    const pend = requests.filter((r) => r.status === 'pending');
     if (!pend.length) return;
     try {
       for (const r of pend) {

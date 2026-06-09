@@ -143,6 +143,12 @@
       "pendingCount_other": "{{count}} requests awaiting action",
       "noPending": "No pending requests",
       "approveAll": "Approve all",
+      "colEmployee": "Employee",
+      "colDates": "Dates",
+      "colTeam": "Team",
+      "colType": "Type",
+      "colSubmitted": "When submitted",
+      "colDocument": "Document",
       "submitted": "Submitted {{rel}}",
       "balance": "Balance: {{count}} days",
       "emptyTitle": "All handled",
@@ -153,10 +159,18 @@
     "dashboard": {
       "title": "Dashboard",
       "sub": "Team absence breakdown for {{year}} · {{count}} team members",
+      "allYear": "All year",
+      "filterYear": "Year",
+      "filterMonth": "Month",
+      "rangeMode": {
+        "year": "Yearly",
+        "month": "Monthly"
+      },
       "filterType": "Type",
       "filterEmployee": "Employee",
       "kpiTotal": "Total absence days",
       "kpiTotalUnit": "days",
+      "kpiCompanyDays": "Company days off",
       "kpiApproved": "{{count}} approved",
       "kpiPending": "{{count}} pending",
       "kpiOffToday": "Off today",
@@ -183,6 +197,7 @@
       "utilLow": "Low utilization",
       "utilEmptyTitle": "No annual quota",
       "utilEmptySub": "Type \"{{type}}\" has no defined annual quota",
+      "legendCompany": "Company days",
       "legendPending": "Pending approval",
       "grouping": {
         "months": "Months",
@@ -192,6 +207,8 @@
       "barTitleTotal": "{{label}}: {{count}} days",
       "barTypeLine": "{{type}} {{count}}",
       "barTypePending": "{{type}} {{count}} ({{pending}} pending)",
+      "barSegTooltip": "{{type}}: {{count}} days",
+      "drillGroupMeta": "{{count}} requests · {{days}} days",
       "kpiApprovedLabel": "approved",
       "kpiPendingLabel": "pending",
       "kpiPendingDaysLabel": "pending days"
@@ -374,7 +391,7 @@
       "statusColumnId": "Status column",
       "empNoteColumnId": "Employee note column",
       "mgrNoteColumnId": "Manager note column",
-      "decidedByColumnId": "Decided-by column",
+      "decidedByColumnId": "Approving manager column",
       "decidedAtColumnId": "Decision date column",
       "fileColumnId": "File column",
       "companyTimelineColumnId": "Timeline column",
@@ -400,9 +417,9 @@
     "statusValues": {
       "title": "Status value mapping",
       "help": "The board status-column label for each request state.",
-      "pending": "Pending value",
-      "approved": "Approved value",
-      "rejected": "Rejected value"
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
     },
     "team": {
       "title": "Teams & managers",
@@ -421,33 +438,58 @@
       "employeesPlaceholder": "Add employees…"
     },
     "selectColumn": "Select a column…",
+    "selectStatusLabel": "Select a status label…",
+    "column": {
+      "searchInputPlaceholder": "Search column...",
+      "clear": "Clear selection",
+      "noResults": "No columns found"
+    },
     "pickBoardFirst": "Pick a board first to load its columns",
+    "loadingStatusLabels": "Loading status labels from the column...",
+    "selectedColumnIsNotStatus": "The selected column is not a status column (status/color)",
+    "pickKindColumnFirst": "Pick the \"General/personal status\" column first in column mapping",
+    "kindValuesEmpty": "No status labels were found in the selected general/personal column",
+    "pickApprovalStatusColumnFirst": "Pick the \"Request status\" column first in column mapping",
+    "statusValuesEmpty": "No status labels were found in the selected request-status column",
+    "pickPersonalTypeColumnFirst": "Pick the \"Personal classification\" column first in column mapping",
+    "personalTypeValuesEmpty": "No status labels were found in the selected personal-classification column",
     "board": {
       "label": "Vacations board",
-      "help": "The single board holding every day-off entry — general and personal."
+      "help": "The single board holding every day-off entry — general and personal.",
+      "loadingBoards": "Loading boards...",
+      "searchPlaceholder": "Select a board",
+      "searchInputPlaceholder": "Search board...",
+      "clear": "Clear selection",
+      "noResults": "No boards found"
     },
     "fields": {
-      "kind": "Kind status column (general/personal)",
-      "person": "Employee column",
-      "personalType": "Personal classification column (vacation/sick/reserves)",
-      "generalType": "General classification column (holiday/company day)",
-      "approvalStatus": "Approval status column (pending/approved/rejected)",
-      "mandatory": "Mandatory column (company day)",
-      "empNote": "Employee note column",
-      "mgrNote": "Manager note column",
-      "decidedBy": "Decided-by column",
-      "decidedAt": "Decision date column",
-      "file": "File column",
-      "startDate": "Start-date column",
-      "endDate": "End-date column",
-      "workdays": "Workdays column (auto-filled)"
+      "kind": "General/personal status",
+      "person": "Employee",
+      "personalType": "Personal classification",
+      "generalType": "General classification",
+      "approvalStatus": "Request status (pending/approved/rejected)",
+      "mandatory": "Mandatory",
+      "empNote": "Employee note",
+      "mgrNote": "Manager note",
+      "decidedBy": "Approving manager",
+      "decidedAt": "Decision date",
+      "file": "File",
+      "startDate": "Start date",
+      "endDate": "End date",
+      "workdays": "Workdays"
     },
     "kindValues": {
       "title": "General/personal values",
       "help": "The status label separating a general day from a personal one.",
-      "general": "'General' value",
-      "personal": "'Personal' value"
-    }
+      "general": "General",
+      "personal": "Personal"
+    },
+    "newStatusLabel": "New label",
+    "addStatusLabel": "Add label",
+    "removeStatusLabel": "Remove label",
+    "typeColor": "Label color",
+    "personalTypeInUse": "This label cannot be removed — board items are still using it",
+    "personalTypeCheckFailed": "Could not check whether this label is in use. Please try again."
   },
   "errors": {
     "title": "Something went wrong"

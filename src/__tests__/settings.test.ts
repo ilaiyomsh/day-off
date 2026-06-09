@@ -10,9 +10,10 @@ describe('DEFAULT_SETTINGS', () => {
     expect(DEFAULT_SETTINGS.columns).toEqual({});
   });
 
-  it('seeds blank kind/type/status value maps with every enum key', () => {
+  it('seeds blank kind/type/status settings and empty personal-type cache', () => {
     expect(DEFAULT_SETTINGS.kindValues).toEqual({ general: '', personal: '' });
     expect(DEFAULT_SETTINGS.typeValues).toEqual({ vacation: '', sick: '', reserves: '' });
+    expect(DEFAULT_SETTINGS.personalTypes).toEqual([]);
     expect(DEFAULT_SETTINGS.statusValues).toEqual({ pending: '', approved: '', rejected: '' });
   });
 

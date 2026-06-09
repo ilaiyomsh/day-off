@@ -25,16 +25,12 @@ export function CompanyDaysTab() {
     .filter((d) => Number(d.start.slice(0, 4)) === filterYear)
     .slice()
     .sort((a, b) => a.start.localeCompare(b.start));
-  const mandatoryCount = all.filter((d) => d.mandatory).length;
 
   return (
     <div className="cd-settings">
       <div className="cd-settings-head">
         <div>
           <span style={{ fontWeight: 600 }}>{t('settings.company.title')}</span>
-          <small style={{ color: 'var(--color-text-secondary)', display: 'block', marginTop: 2 }}>
-            {t('views.company.sub', { count: all.length, year: filterYear, mandatory: mandatoryCount })}
-          </small>
         </div>
         <div className="head-actions">
           <YearSelect year={filterYear} years={years} onChange={setFilterYear} />

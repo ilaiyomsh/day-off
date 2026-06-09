@@ -6,13 +6,13 @@
  * Data that the prototype read off window.DayOffData (balanceFor, COMPANY_DAYS)
  * now comes from useDayOffData(); date formatting via useL10n(); strings via t().
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AbsenceType, Attachment, RequestDraft, Employee } from '../../domain/types';
-import { ABSENCE_TYPES, TYPE_ICON, TYPE_ORDER } from '../../domain/absence';
+import { ABSENCE_TYPES, TYPE_ORDER } from '../../domain/absence';
 import { todayKey, workdaysBetween, calDaysBetween } from '../../domain/dates';
 import { useL10n } from '../../domain/useL10n';
 import { useDayOffData } from '../../contexts/DayOffDataProvider';
-import { Modal, Icon } from '../ui';
+import { Modal, Icon, MiniLoader, Rng } from '../ui';
 
 /** Human-readable file size — kept local, matches the prototype helper. */
 export function fmtFileSize(bytes?: number): string {
@@ -27,19 +27,24 @@ interface RequestModalProps {
   initial?: (Partial<RequestDraft> & { id?: string }) | null;
   onClose: () => void;
   onSubmit: (draft: RequestDraft) => void;
+  busy?: boolean;
 }
 
-export function RequestModal({ currentUser, initial, onClose, onSubmit }: RequestModalProps) {
+export function RequestModal({ currentUser, initial, onClose, onSubmit, busy }: RequestModalProps) {
   const { t } = useL10n();
-  const { fmtRange } = useL10n();
   const { balanceFor, companyDays } = useDayOffData();
 
-  const [type, setType] = useState<AbsenceType>(initial?.type || 'vacation');
+  const firstType = TYPE_ORDER[0] ?? 'vacation';
+  const [type, setType] = useState<AbsenceType>(initial?.type || firstType);
   const [start, setStart] = useState(initial?.start || todayKey());
   const [end, setEnd] = useState(initial?.end || initial?.start || todayKey());
   const [note, setNote] = useState(initial?.note || '');
   const [attachment, setAttachment] = useState<Attachment | null>(initial?.attachment || null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (TYPE_ORDER.length > 0 && !TYPE_ORDER.includes(type)) setType(TYPE_ORDER[0]);
+  }, [type]);
 
   function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files && e.target.files[0];
@@ -63,27 +68,27 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit }: Reques
   const bal = valid ? balanceFor(Number(start.slice(0, 4)), currentUser.id, type) : null;
   // Quotas were removed (entitled is always 0) → no remaining/over-balance hints.
   const remaining = bal && bal.entitled > 0 ? bal.entitled - bal.used : null;
-  const overBalance =
-    type !== 'sick' && type !== 'reserves' && remaining != null && workdays > remaining;
-
-  const tt = ABSENCE_TYPES[type];
+  const overBalance = remaining != null && workdays > remaining;
+  const tt = ABSENCE_TYPES[type] ?? { id: type, labelKey: type, color: 'var(--color-primary)', index: 0 };
 
   return (
     <Modal
       title={initial?.id ? t('request.editTitle') : t('request.newTitle')}
       onClose={onClose}
+      busy={busy}
       footer={
         <>
-          <button className="btn btn-secondary" onClick={onClose}>
+          <button className="btn btn-secondary" onClick={onClose} disabled={busy}>
             {t('common.cancel')}
           </button>
           <button
             className="btn btn-primary"
-            disabled={!valid}
+            disabled={!valid || busy}
             onClick={() =>
               onSubmit({ type, start, end, note: note.trim(), attachment: attachment || undefined })
             }
           >
+            {busy ? <MiniLoader size={15} /> : null}
             {t('request.submit')}
           </button>
         </>
@@ -103,10 +108,7 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit }: Reques
                 style={{ '--sel': meta.color } as React.CSSProperties}
                 onClick={() => setType(id)}
               >
-                <span className="to-dot" style={{ background: meta.color }}>
-                  <Icon name={TYPE_ICON[id]} size={13} strokeWidth={2} />
-                </span>
-                <span className="to-name">{t(meta.labelKey)}</span>
+                {t(meta.labelKey)}
               </button>
             );
           })}
@@ -140,30 +142,30 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit }: Reques
       </div>
 
       {valid && (
-        <div className="summary">
-          <div className="summary-stat">
-            <span className="summary-val summary-num" style={{ color: tt.color }}>
-              {workdays}
-            </span>
-            <span className="summary-label">{t('request.summaryWorkdays')}</span>
-          </div>
-          <span className="summary-sep" aria-hidden="true" />
-          <div className="summary-stat">
-            <span className="summary-val">{calDays}</span>
-            <span className="summary-label">{t('request.summaryCalDaysLabel')}</span>
-          </div>
-          <span className="summary-sep" aria-hidden="true" />
-          <div className="summary-stat">
-            <span className="summary-val">{fmtRange(start, end)}</span>
+        <div className="summary summary--inline">
+          <span className="summary-part">
             <span className="summary-label">{t('request.summaryDatesLabel')}</span>
-          </div>
-          {type !== 'sick' && type !== 'reserves' && remaining != null && (
+            <strong className="summary-num">
+              <Rng start={start} end={end} />
+            </strong>
+          </span>
+          <span className="summary-sep" aria-hidden="true" />
+          <span className="summary-part">
+            <span className="summary-label">{t('request.summaryCalDaysLabel')}</span>
+            <strong className="summary-num">{calDays}</strong>
+          </span>
+          <span className="summary-sep" aria-hidden="true" />
+          <span className="summary-part">
+            <span className="summary-label">{t('request.summaryWorkdays')}</span>
+            <strong className="summary-num">{workdays}</strong>
+          </span>
+          {remaining != null && (
             <>
               <span className="summary-sep" aria-hidden="true" />
-              <div className="summary-stat">
-                <span className="summary-val">{remaining - workdays}</span>
+              <span className="summary-part">
                 <span className="summary-label">{t('request.summaryRemaining')}</span>
-              </div>
+                <strong className="summary-num">{remaining - workdays}</strong>
+              </span>
             </>
           )}
         </div>

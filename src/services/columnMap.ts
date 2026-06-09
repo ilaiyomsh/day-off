@@ -74,9 +74,27 @@ export function parseStatusText(text?: string | null): string {
   return text.trim();
 }
 
+/** Parse a status column raw `value` JSON and return the label id (stored under key `index`). */
+export function parseStatusIndex(value?: string | null): number | null {
+  const parsed = safeParse(value);
+  if (!isRecord(parsed)) return null;
+  const rawIndex = parsed.index;
+  if (typeof rawIndex === 'number' && Number.isFinite(rawIndex)) return rawIndex;
+  if (typeof rawIndex === 'string' && rawIndex.trim() !== '') {
+    const n = Number(rawIndex);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 /** Format a status label → write value: { label }. */
 export function formatStatusLabel(label: string): unknown {
   return { label };
+}
+
+/** Format a status label id → write value: { index: id }. monday names the field `index` but expects the label id. */
+export function formatStatusIndex(labelId: number): unknown {
+  return { index: labelId };
 }
 
 // ---------------------------------------------------------------------------

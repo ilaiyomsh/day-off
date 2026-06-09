@@ -68,6 +68,22 @@ export interface KindValueMap {
   personal: string;
 }
 
+/** Snapshot of personal absence type labels from the board status column. */
+export interface PersonalTypeOption {
+  /** Stable monday label id (source of truth for read/write). */
+  id: string;
+  /** Display label text from monday status settings. */
+  title: string;
+  /** Label color as provided by monday status settings. */
+  color: string;
+  /** Raw monday status color value (enum/id) for update mutations. */
+  colorValue?: string | number;
+  /** Label display position in the status column (0–39). Item writes use `id`, not this. */
+  index: number;
+  isDone?: boolean;
+  isDeactivated?: boolean;
+}
+
 /**
  * A team — a named group with its own managers and employees (monday user ids).
  * A user may appear in several teams, and may be a manager in one while an
@@ -93,8 +109,10 @@ export interface DayOffSettings {
   columns: VacationColumnMap;
   /** Labels in the kind status column that mean general / personal. */
   kindValues: KindValueMap;
-  /** Personal-type enum → board status label (vacation/sick/reserves). */
+  /** @deprecated legacy mapping; kept for backward compatibility with old data. */
   typeValues: TypeValueMap;
+  /** Personal-type labels cache (id/title/color/index), shared for all users. */
+  personalTypes: PersonalTypeOption[];
   /** Approval status enum → board status label (pending/approved/rejected). */
   statusValues: StatusValueMap;
   /** Teams — each with its own managers + employees. Source of truth for roles. */
@@ -108,6 +126,7 @@ export const DEFAULT_SETTINGS: DayOffSettings = {
   columns: {},
   kindValues: { general: '', personal: '' },
   typeValues: { vacation: '', sick: '', reserves: '' },
+  personalTypes: [],
   statusValues: { pending: '', approved: '', rejected: '' },
   teams: [],
   languageOverride: null,

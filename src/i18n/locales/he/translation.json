@@ -143,6 +143,12 @@
       "pendingCount_other": "{{count}} בקשות ממתינות לטיפול",
       "noPending": "אין בקשות ממתינות",
       "approveAll": "אישור הכל",
+      "colEmployee": "עובד",
+      "colDates": "תאריכים",
+      "colTeam": "צוות",
+      "colType": "סוג",
+      "colSubmitted": "מתי הוגש",
+      "colDocument": "מסמך",
       "submitted": "הוגש {{rel}}",
       "balance": "יתרה: {{count}} ימים",
       "emptyTitle": "הכול מטופל",
@@ -153,10 +159,18 @@
     "dashboard": {
       "title": "דשבורד",
       "sub": "פילוח היעדרויות הצוות לשנת {{year}} · {{count}} אנשי צוות",
+      "allYear": "כל השנה",
+      "filterYear": "שנה",
+      "filterMonth": "חודש",
+      "rangeMode": {
+        "year": "שנתי",
+        "month": "חודשי"
+      },
       "filterType": "סוג",
       "filterEmployee": "עובד",
       "kpiTotal": "סה״כ ימי היעדרות",
       "kpiTotalUnit": "ימים",
+      "kpiCompanyDays": "ימי חופש חברה",
       "kpiApproved": "{{count}} מאושרים",
       "kpiPending": "{{count}} ממתינים",
       "kpiOffToday": "נעדרים היום",
@@ -183,6 +197,7 @@
       "utilLow": "ניצול נמוך",
       "utilEmptyTitle": "אין מכסה שנתית",
       "utilEmptySub": "לסוג \"{{type}}\" אין מכסה שנתית מוגדרת",
+      "legendCompany": "ימי חברה",
       "legendPending": "ממתין לאישור",
       "grouping": {
         "months": "חודשים",
@@ -192,6 +207,8 @@
       "barTitleTotal": "{{label}}: {{count}} ימים",
       "barTypeLine": "{{type}} {{count}}",
       "barTypePending": "{{type}} {{count}} ({{pending}} ממתינים)",
+      "barSegTooltip": "{{type}}: {{count}} ימים",
+      "drillGroupMeta": "{{count}} בקשות · {{days}} ימים",
       "kpiApprovedLabel": "מאושרים",
       "kpiPendingLabel": "ממתינים",
       "kpiPendingDaysLabel": "ימים ממתינים"
@@ -374,7 +391,7 @@
       "statusColumnId": "עמודת סטטוס",
       "empNoteColumnId": "עמודת הערת עובד",
       "mgrNoteColumnId": "עמודת הערת מנהל",
-      "decidedByColumnId": "עמודת מאשר/דוחה",
+      "decidedByColumnId": "עמודת מנהל מאשר",
       "decidedAtColumnId": "עמודת תאריך החלטה",
       "fileColumnId": "עמודת קובץ",
       "companyTimelineColumnId": "עמודת טווח תאריכים",
@@ -400,9 +417,9 @@
     "statusValues": {
       "title": "מיפוי ערכי סטטוס",
       "help": "התווית בעמודת הסטטוס בלוח עבור כל מצב בקשה.",
-      "pending": "ערך ממתין לאישור",
-      "approved": "ערך מאושר",
-      "rejected": "ערך נדחה"
+      "pending": "ממתין לאישור",
+      "approved": "מאושר",
+      "rejected": "נדחה"
     },
     "team": {
       "title": "צוותים ומנהלים",
@@ -421,33 +438,58 @@
       "employeesPlaceholder": "הוסף עובדים…"
     },
     "selectColumn": "בחירת עמודה…",
+    "selectStatusLabel": "בחירת תווית סטטוס…",
+    "column": {
+      "searchInputPlaceholder": "חיפוש עמודה...",
+      "clear": "נקה בחירה",
+      "noResults": "לא נמצאו עמודות"
+    },
     "pickBoardFirst": "יש לבחור לוח תחילה כדי לטעון עמודות",
+    "loadingStatusLabels": "טוען ערכי סטטוס מהעמודה...",
+    "selectedColumnIsNotStatus": "העמודה שנבחרה אינה מסוג סטטוס (status/color)",
+    "pickKindColumnFirst": "יש לבחור תחילה את עמודת \"סטטוס כללי/אישי\" במיפוי העמודות",
+    "kindValuesEmpty": "לא נמצאו תוויות סטטוס בעמודת הכללי/אישי שנבחרה",
+    "pickApprovalStatusColumnFirst": "יש לבחור תחילה את עמודת \"סטטוס בקשה\" במיפוי העמודות",
+    "statusValuesEmpty": "לא נמצאו תוויות סטטוס בעמודת סטטוס הבקשה שנבחרה",
+    "pickPersonalTypeColumnFirst": "יש לבחור תחילה את עמודת \"סיווג אישי\" במיפוי העמודות",
+    "personalTypeValuesEmpty": "לא נמצאו ערכי סטטוס בעמודת הסיווג האישי שנבחרה",
     "board": {
       "label": "לוח החופשות",
-      "help": "הלוח היחיד שבו נשמרים כל ימי ההיעדרות — כלליים ואישיים."
+      "help": "הלוח היחיד שבו נשמרים כל ימי ההיעדרות — כלליים ואישיים.",
+      "loadingBoards": "טוען לוחות...",
+      "searchPlaceholder": "בחר לוח",
+      "searchInputPlaceholder": "חיפוש לוח...",
+      "clear": "נקה בחירה",
+      "noResults": "לא נמצאו לוחות"
     },
     "fields": {
-      "kind": "עמודת סטטוס: כללי/אישי",
-      "person": "עמודת עובד",
-      "personalType": "עמודת סיווג אישי (חופשה/מחלה/מילואים)",
-      "generalType": "עמודת סיווג כללי (חג/יום חברה)",
-      "approvalStatus": "עמודת סטטוס אישור (ממתין/מאושר/נדחה)",
-      "mandatory": "עמודת חובה (יום חברה)",
-      "empNote": "עמודת הערת עובד",
-      "mgrNote": "עמודת הערת מנהל",
-      "decidedBy": "עמודת מאשר/דוחה",
-      "decidedAt": "עמודת תאריך החלטה",
-      "file": "עמודת קובץ",
-      "startDate": "עמודת תאריך התחלה",
-      "endDate": "עמודת תאריך סיום",
-      "workdays": "עמודת ימי עבודה (מחושב אוטומטית)"
+      "kind": "סטטוס כללי/אישי",
+      "person": "עובד",
+      "personalType": "סיווג אישי",
+      "generalType": "סיווג כללי",
+      "approvalStatus": "סטטוס בקשה (ממתין/מאושר/נדחה)",
+      "mandatory": "חובה",
+      "empNote": "הערת עובד",
+      "mgrNote": "הערת מנהל",
+      "decidedBy": "מנהל מאשר",
+      "decidedAt": "תאריך החלטה",
+      "file": "קובץ",
+      "startDate": "תאריך התחלה",
+      "endDate": "תאריך סיום",
+      "workdays": "ימי עבודה"
     },
     "kindValues": {
       "title": "ערכי כללי/אישי",
       "help": "התווית בעמודת הסטטוס המבדילה בין יום כללי ליום אישי.",
-      "general": "ערך 'כללי'",
-      "personal": "ערך 'אישי'"
-    }
+      "general": "כללי",
+      "personal": "אישי"
+    },
+    "newStatusLabel": "תווית חדשה",
+    "addStatusLabel": "הוסף תווית",
+    "removeStatusLabel": "הסר תווית",
+    "typeColor": "צבע תווית",
+    "personalTypeInUse": "לא ניתן למחוק תווית זו — קיימות בקשות בלוח שמשתמשות בה",
+    "personalTypeCheckFailed": "לא ניתן לבדוק אם התווית בשימוש. נסו שוב."
   },
   "errors": {
     "title": "משהו השתבש"

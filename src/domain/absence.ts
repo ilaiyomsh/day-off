@@ -1,47 +1,72 @@
 /**
- * Absence-type config + balance analytics (pure). Labels are i18n KEYS, resolved
- * by callers via t(); colors are CSS custom properties from tokens.css.
+ * Absence-type runtime config + balance analytics (pure).
+ * Personal absence types are dynamic and derived from monday status labels.
  */
+import type { PersonalTypeOption } from '../types';
 import type { AbsenceType, Balance, DayOffRequest, Entitlement, RequestStatus } from './types';
 import { eachDay, fromKey, isWeekend, workdaysBetween } from './dates';
 
 export interface AbsenceTypeMeta {
-  id: AbsenceType;
-  /** i18n key, e.g. 'types.vacation'. */
+  id: string;
+  /** Display text (for legacy keys this can still be an i18n key). */
   labelKey: string;
-  /** CSS variable reference for chips/meters. */
+  /** Chip/legend color. */
   color: string;
-  /** Raw hex (for canvas/inline contexts that can't use a CSS var). */
-  hex: string;
+  /** monday status index of this label. */
+  index: number;
 }
 
-export const ABSENCE_TYPES: Record<AbsenceType, AbsenceTypeMeta> = {
-  vacation: { id: 'vacation', labelKey: 'types.vacation', color: 'var(--color-event-vacation)', hex: '#00c875' },
-  sick: { id: 'sick', labelKey: 'types.sick', color: 'var(--color-event-sick)', hex: '#e2445c' },
-  reserves: { id: 'reserves', labelKey: 'types.reserves', color: 'var(--color-event-reserves)', hex: '#579bfc' },
-};
+const DEFAULT_ABSENCE_TYPES: AbsenceTypeMeta[] = [
+  { id: 'vacation', labelKey: 'types.vacation', color: 'var(--color-event-vacation)', index: 1 },
+  { id: 'sick', labelKey: 'types.sick', color: 'var(--color-event-sick)', index: 2 },
+  { id: 'reserves', labelKey: 'types.reserves', color: 'var(--color-event-reserves)', index: 3 },
+];
 
-export const TYPE_ORDER: AbsenceType[] = ['vacation', 'sick', 'reserves'];
+export let TYPE_ORDER: AbsenceType[] = DEFAULT_ABSENCE_TYPES.map((t) => t.id);
+export let ABSENCE_TYPES: Record<string, AbsenceTypeMeta> = Object.fromEntries(
+  DEFAULT_ABSENCE_TYPES.map((t) => [t.id, t]),
+);
+
+/** Safe lookup — requests may still reference a type removed from settings. */
+export function absenceTypeMeta(type: string): AbsenceTypeMeta {
+  return ABSENCE_TYPES[type] ?? { id: type, labelKey: type, color: 'var(--color-primary)', index: 0 };
+}
 
 /** Icon name (see src/components/ui/Icon) per absence type. */
-export const TYPE_ICON: Record<AbsenceType, string> = {
+export const TYPE_ICON: Record<string, string> = {
   vacation: 'plane',
   sick: 'alert',
   reserves: 'briefcase',
 };
+
+/**
+ * Apply a new runtime personal-types snapshot from settings.
+ * We keep this mutable to avoid threading type metadata through every prop chain.
+ */
+export function applyRuntimeAbsenceTypes(options: PersonalTypeOption[]): void {
+  const valid = options
+    .filter((opt) => opt.id.trim() !== '')
+    .sort((a, b) => a.index - b.index)
+    .map((opt) => ({
+      id: opt.id,
+      labelKey: opt.title,
+      color: opt.color || 'var(--color-event-vacation)',
+      index: opt.index,
+    }));
+  if (!valid.length) {
+    TYPE_ORDER = DEFAULT_ABSENCE_TYPES.map((t) => t.id);
+    ABSENCE_TYPES = Object.fromEntries(DEFAULT_ABSENCE_TYPES.map((t) => [t.id, t]));
+    return;
+  }
+  TYPE_ORDER = valid.map((t) => t.id);
+  ABSENCE_TYPES = Object.fromEntries(valid.map((t) => [t.id, t]));
+}
 
 /** i18n keys for status labels. */
 export const STATUS_LABEL_KEY: Record<RequestStatus, string> = {
   pending: 'status.pending',
   approved: 'status.approved',
   rejected: 'status.rejected',
-};
-
-/** Documentation-hint i18n key for the attachment field, per type. */
-export const DOC_HINT_KEY: Record<AbsenceType, string> = {
-  vacation: 'request.docHint.vacation',
-  sick: 'request.docHint.sick',
-  reserves: 'request.docHint.reserves',
 };
 
 /** Year a request is attributed to (its start year) — matches the prototype's balance logic. */

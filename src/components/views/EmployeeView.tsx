@@ -1,13 +1,13 @@
 /* ============================================================
    Day Off — Employee view ("My absences"). Layout: month calendar on the
-   right (top-aligned); left column holds per-type absence-day stats on top
-   (StatCard — days this month + this year, no quota) and the date-sorted
-   request list below (pending first). Data via useDayOffData(); dates via useL10n().
+   right (top-aligned); left column holds per-type absence-day stats (aligned
+   with the calendar) and the date-sorted request list below (pending first).
+   Data via useDayOffData(); dates via useL10n().
    ============================================================ */
 import { useState, type CSSProperties } from 'react';
 import { useDayOffData } from '../../contexts/DayOffDataProvider';
 import { useL10n } from '../../domain/useL10n';
-import { ABSENCE_TYPES, TYPE_ORDER, reqWorkdayKeysInYear } from '../../domain/absence';
+import { absenceTypeMeta, TYPE_ORDER, reqWorkdayKeysInYear } from '../../domain/absence';
 import { workdaysBetween } from '../../domain/dates';
 import type { AbsenceType, CompanyDay, DayOffRequest } from '../../domain/types';
 import {
@@ -40,7 +40,7 @@ function myChipsFor(
   requests
     .filter((r) => r.employeeId === empId && r.status !== 'rejected' && dateKey >= r.start && dateKey <= r.end)
     .forEach((r) => {
-      const meta = ABSENCE_TYPES[r.type];
+      const meta = absenceTypeMeta(r.type);
       chips.push({
         key: r.id,
         kind: 'absence',
@@ -69,11 +69,9 @@ interface StatCardProps {
 function StatCard({ empId, type, year, monthDate, scope }: StatCardProps) {
   const { t } = useL10n();
   const { requests, pendingDaysFor } = useDayOffData();
-  const meta = ABSENCE_TYPES[type];
+  const meta = absenceTypeMeta(type);
   const monthPrefix = `${year}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
 
-  // Count non-rejected workdays of this type within the selected year (clipped),
-  // narrowing to the displayed month when the scope is 'month'.
   let days = 0;
   for (const r of requests) {
     if (r.employeeId !== empId || r.type !== type || r.status === 'rejected') continue;
@@ -87,7 +85,6 @@ function StatCard({ empId, type, year, monthDate, scope }: StatCardProps) {
       {pending > 0 && <span className="stat-pending-dot" title={t('stats.pending', { count: pending })} />}
       <span className="stat-num">{days}</span>
       <span className="stat-top">
-        <span className="balance-dot" style={{ background: meta.color }} />
         <span className="stat-title">{t(meta.labelKey)}</span>
       </span>
     </div>
@@ -104,7 +101,7 @@ export function RequestRow({ request, onClick, showEmp }: RequestRowProps) {
   const { t } = useL10n();
   const { empById } = useDayOffData();
   const emp = empById(request.employeeId);
-  const meta = ABSENCE_TYPES[request.type];
+  const meta = absenceTypeMeta(request.type);
   const days = workdaysBetween(request.start, request.end);
   return (
     <div className="list-row" style={{ cursor: 'pointer' }} onClick={() => onClick(request)}>
@@ -188,51 +185,49 @@ export function EmployeeView({ onNewRequest, onOpenRequest, onAddOnDay }: Employ
         </div>
       </div>
 
-      {/* calendar (right, top-aligned) + left column: stats on top, requests below */}
+      {/* 2×2 grid: toolbar ↔ scope toggle (row 1), calendar ↔ stat cards (row 2) */}
       <div className="emp-layout">
-        <div className="emp-main">
+        <div className="emp-toolbar-slot">
           <CalToolbar {...nav} monthDate={monthDate} />
+        </div>
+        <div className="emp-stats-head-slot">
+          <div className="stats-scope" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={scope === 'month'}
+              className={scope === 'month' ? 'active' : ''}
+              onClick={() => setScope('month')}
+            >
+              {t('stats.thisMonth')}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={scope === 'year'}
+              className={scope === 'year' ? 'active' : ''}
+              onClick={() => setScope('year')}
+            >
+              {t('stats.thisYear')}
+            </button>
+          </div>
+        </div>
+        <div className="emp-cal-slot">
           <MonthCalendar
             monthDate={monthDate}
-            chipsFor={(k) => myChipsFor(requests, holidaysOnKey, (type) => t(ABSENCE_TYPES[type].labelKey), currentUser.id, k)}
+            chipsFor={(k) => myChipsFor(requests, holidaysOnKey, (type) => t(absenceTypeMeta(type).labelKey), currentUser.id, k)}
             onAddDay={(k) => onAddOnDay(k)}
             onChipClick={(c) => {
               if (c.kind === 'absence') onOpenRequest(c.data as DayOffRequest);
             }}
           />
         </div>
-        <aside className="emp-side">
-          {/* top-left: per-type absence-day stats — one compact card per type,
-              scope toggled between the displayed month and the whole year (no quota) */}
-          <div className="stats-block">
-            <div className="stats-scope" role="tablist">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={scope === 'month'}
-                className={scope === 'month' ? 'active' : ''}
-                onClick={() => setScope('month')}
-              >
-                {t('stats.thisMonth')}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={scope === 'year'}
-                className={scope === 'year' ? 'active' : ''}
-                onClick={() => setScope('year')}
-              >
-                {t('stats.thisYear')}
-              </button>
-            </div>
-            <div className="stats-row">
-              {TYPE_ORDER.map((type) => (
-                <StatCard key={type} empId={currentUser.id} type={type} year={year} monthDate={monthDate} scope={scope} />
-              ))}
-            </div>
+        <aside className="emp-side emp-side-slot">
+          <div className="stats-row">
+            {TYPE_ORDER.map((type) => (
+              <StatCard key={type} empId={currentUser.id} type={type} year={year} monthDate={monthDate} scope={scope} />
+            ))}
           </div>
-
-          {/* bottom-left: requests sorted by date, pending first */}
           <div className="section-head-row">
             <h3 className="block-title">{t('views.mine.requests')}</h3>
           </div>

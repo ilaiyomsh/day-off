@@ -3,7 +3,7 @@
  * (src/services) map board items <-> these shapes. Dates are ISO day-keys 'YYYY-MM-DD'.
  */
 
-export type AbsenceType = 'vacation' | 'sick' | 'reserves';
+export type AbsenceType = string;
 export type RequestStatus = 'pending' | 'approved' | 'rejected';
 
 /** A day-key in 'YYYY-MM-DD' form (local calendar day, no time). */
@@ -44,8 +44,6 @@ export interface CompanyDay {
   name: string;
   /** true = mandatory (office closed); false = optional (רשות). */
   mandatory: boolean;
-  /** Free classification label from the general-type status column (display only). */
-  classification?: string;
 }
 
 /** Annual entitlement for (employee × type × year) = one row on the entitlements board. */

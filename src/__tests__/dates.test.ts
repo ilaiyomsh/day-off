@@ -13,6 +13,7 @@ import {
   fmtDateLong,
   fmtRange,
   relDays,
+  rangeOverlapsYear,
   type MonthDayNames,
   type RelDayLabels,
 } from '../domain/dates';
@@ -94,6 +95,20 @@ describe('eachDay', () => {
       '2027-01-01',
       '2027-01-02',
     ]);
+  });
+});
+
+describe('rangeOverlapsYear', () => {
+  it('is true when the range lies fully inside the year', () => {
+    expect(rangeOverlapsYear('2026-03-01', '2026-03-10', 2026)).toBe(true);
+  });
+
+  it('is true when the range crosses into the year from the prior year', () => {
+    expect(rangeOverlapsYear('2025-12-20', '2026-01-05', 2026)).toBe(true);
+  });
+
+  it('is false when the range ends before the year', () => {
+    expect(rangeOverlapsYear('2025-01-01', '2025-12-31', 2026)).toBe(false);
   });
 });
 
