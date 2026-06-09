@@ -321,6 +321,29 @@ export async function updateRequest(
  * Attach a document to an existing request item (any status — e.g. adding a sick
  * note to an already-approved request). Requires a configured file column.
  */
+/** Update employee and/or manager notes on an existing request (any status). */
+export async function updateRequestNotes(
+  ctx: VacationCtx,
+  id: string,
+  notes: { employeeNote?: string; managerNote?: string },
+): Promise<void> {
+  const { cols } = ctx;
+  try {
+    const columns: ColumnValues = {};
+    if (notes.employeeNote !== undefined && cols.empNoteColumnId) {
+      columns[cols.empNoteColumnId] = formatLongText(notes.employeeNote);
+    }
+    if (notes.managerNote !== undefined && cols.mgrNoteColumnId) {
+      columns[cols.mgrNoteColumnId] = formatLongText(notes.managerNote);
+    }
+    if (!Object.keys(columns).length) return;
+    await mondayApi.updateMultipleColumnValues(ctx.boardId, id, columns);
+  } catch (err) {
+    logger.error('vacationService', 'updateRequestNotes failed', err);
+    throw err;
+  }
+}
+
 export async function uploadAttachment(ctx: VacationCtx, itemId: string, file: File): Promise<void> {
   const { cols } = ctx;
   if (!cols.fileColumnId) throw new Error('No file column configured for the requests board');

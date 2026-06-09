@@ -645,6 +645,12 @@ function BoardAndMappingTab({
     }
   }, [draft.personalTypes, personalTypes, setField]);
 
+  useEffect(() => {
+    if (!samePersonalTypeOptions(draft.approvalStatusTypes ?? [], approvalStatusOptions)) {
+      setField('approvalStatusTypes', approvalStatusOptions as DayOffSettings['approvalStatusTypes']);
+    }
+  }, [draft.approvalStatusTypes, approvalStatusOptions, setField]);
+
   return (
     <div style={{ display: 'grid', gap: 20 }}>
       <section style={{ display: 'grid', gap: 8 }}>

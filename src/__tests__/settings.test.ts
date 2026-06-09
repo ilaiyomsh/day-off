@@ -15,6 +15,7 @@ describe('DEFAULT_SETTINGS', () => {
     expect(DEFAULT_SETTINGS.typeValues).toEqual({ vacation: '', sick: '', reserves: '' });
     expect(DEFAULT_SETTINGS.personalTypes).toEqual([]);
     expect(DEFAULT_SETTINGS.statusValues).toEqual({ pending: '', approved: '', rejected: '' });
+    expect(DEFAULT_SETTINGS.approvalStatusTypes).toEqual([]);
   });
 
   it('starts with no teams', () => {

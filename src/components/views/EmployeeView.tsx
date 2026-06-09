@@ -135,10 +135,7 @@ export function RequestRow({ request, onClick, showEmp }: RequestRowProps) {
             </>
           )}
           {request.attachment && (
-            <span
-              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--color-primary)' }}
-              title={t('common.attachedDocument')}
-            >
+            <span className="row-attach" title={t('common.attachedDocument')}>
               <Icon name="paperclip" size={13} />
             </span>
           )}

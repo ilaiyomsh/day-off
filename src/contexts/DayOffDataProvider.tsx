@@ -28,9 +28,16 @@ import type {
   Employee,
   Entitlement,
   RequestDraft,
+  RequestStatus,
 } from '../domain/types';
 import type { Team, PersonalTypeOption } from '../types';
-import { applyRuntimeAbsenceTypes, computeBalance, pendingDaysFor as pendingDaysForDomain, requestYear } from '../domain/absence';
+import {
+  applyRuntimeAbsenceTypes,
+  computeBalance,
+  pendingDaysFor as pendingDaysForDomain,
+  requestYear,
+  resolveStatusColor,
+} from '../domain/absence';
 import { todayKey } from '../domain/dates';
 import {
   listEntries,
@@ -39,6 +46,7 @@ import {
   setStatus,
   deleteRequest,
   uploadAttachment,
+  updateRequestNotes,
   saveCompanyDay as saveCompanyDayApi,
   deleteCompanyDay as deleteCompanyDayApi,
   type VacationCtx,
@@ -85,12 +93,21 @@ export interface DayOffData {
   cancelRequest: (r: DayOffRequest) => Promise<void>;
   /** Upload a document to an existing request (any status). */
   attachDocument: (r: DayOffRequest, file: File) => Promise<void>;
+  /** Persist employee and/or manager notes on an existing request (any status). */
+  saveRequestNotes: (
+    r: DayOffRequest,
+    notes: { employeeNote?: string; managerNote?: string },
+  ) => Promise<boolean>;
   /** True when the requests board has a file column configured (upload enabled). */
   canAttachDocuments: boolean;
+  canEditEmployeeNote: boolean;
+  canEditManagerNote: boolean;
   saveCompanyDay: (draft: CompanyDayDraft) => Promise<void>;
   deleteCompanyDay: (h: CompanyDay) => Promise<void>;
   toasts: Toast[];
   toast: (text: string, variant?: ToastVariant) => void;
+  /** UI color for pending / approved / rejected — from settings status mapping. */
+  statusColor: (status: RequestStatus) => string;
 }
 
 const Ctx = createContext<DayOffData | null>(null);
@@ -155,6 +172,40 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
     const savedPersonalTypes = settings.personalTypes ?? [];
     applyRuntimeAbsenceTypes(savedPersonalTypes.length ? savedPersonalTypes : LEGACY_PERSONAL_TYPES);
   }, [settings.personalTypes]);
+
+  const [approvalStatusTypes, setApprovalStatusTypes] = useState<PersonalTypeOption[]>([]);
+
+  useEffect(() => {
+    const saved = settings.approvalStatusTypes ?? [];
+    if (saved.length) {
+      setApprovalStatusTypes(saved);
+      return;
+    }
+    const boardId = settings.vacationBoardId;
+    const columnId = settings.columns.approvalStatusColumnId;
+    if (!boardId || !columnId) {
+      setApprovalStatusTypes([]);
+      return;
+    }
+    let cancelled = false;
+    void mondayApi
+      .getStatusColumnSnapshot(boardId, columnId)
+      .then((snapshot) => {
+        if (!cancelled) setApprovalStatusTypes(snapshot);
+      })
+      .catch((err) => {
+        logger.error('DayOffDataProvider', 'failed to load approval status colors', { boardId, columnId, err });
+        if (!cancelled) setApprovalStatusTypes([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [settings.approvalStatusTypes, settings.vacationBoardId, settings.columns.approvalStatusColumnId]);
+
+  const statusColor = useCallback(
+    (status: RequestStatus) => resolveStatusColor(status, settings.statusValues, approvalStatusTypes),
+    [settings.statusValues, approvalStatusTypes],
+  );
 
   // ---- teams + derived role/universe selectors ----
   const teams = settings.teams;
@@ -422,6 +473,24 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
     [vacCtx, loadEntries, toast, t, handleError],
   );
   const canAttachDocuments = !!vacCtx?.cols.fileColumnId;
+  const canEditEmployeeNote = !!vacCtx?.cols.empNoteColumnId;
+  const canEditManagerNote = !!vacCtx?.cols.mgrNoteColumnId;
+
+  const saveRequestNotes = useCallback(
+    async (r: DayOffRequest, notes: { employeeNote?: string; managerNote?: string }): Promise<boolean> => {
+      if (!vacCtx) return false;
+      try {
+        await updateRequestNotes(vacCtx, r.id, notes);
+        await loadEntries();
+        toast(t('toasts.noteSaved'), 'success');
+        return true;
+      } catch (err) {
+        handleError(err, { operation: 'DayOffData.saveRequestNotes' });
+        return false;
+      }
+    },
+    [vacCtx, loadEntries, toast, t, handleError],
+  );
 
   const saveCompanyDay = useCallback(
     async (draft: CompanyDayDraft) => {
@@ -479,11 +548,15 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
       approveAll,
       cancelRequest,
       attachDocument,
+      saveRequestNotes,
       canAttachDocuments,
+      canEditEmployeeNote,
+      canEditManagerNote,
       saveCompanyDay,
       deleteCompanyDay,
       toasts,
       toast,
+      statusColor,
     }),
     [
       loading,
@@ -513,11 +586,15 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
       approveAll,
       cancelRequest,
       attachDocument,
+      saveRequestNotes,
       canAttachDocuments,
+      canEditEmployeeNote,
+      canEditManagerNote,
       saveCompanyDay,
       deleteCompanyDay,
       toasts,
       toast,
+      statusColor,
     ],
   );
 

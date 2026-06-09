@@ -7,7 +7,7 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState, type CSSPropert
 import { useDayOffData } from '../../contexts/DayOffDataProvider';
 import { useL10n } from '../../domain/useL10n';
 import { absenceTypeMeta, TYPE_ORDER } from '../../domain/absence';
-import { fromKey, isWeekend, pad, toKey, todayKey } from '../../domain/dates';
+import { isWeekend, toKey, todayKey } from '../../domain/dates';
 import type { CompanyDay, DayOffRequest } from '../../domain/types';
 import { Tooltip } from '@vibe/core';
 import { Avatar, CalToolbar } from '../ui';
@@ -20,9 +20,13 @@ interface TeamBarRun {
   request: DayOffRequest;
   type: ReturnType<typeof absenceTypeMeta>;
   pending: boolean;
-  startDay: number;
-  endDay: number;
+  startCol: number;
+  colSpan: number;
 }
+
+const NAME_COL_W = 190;
+const CELL_SIZE = 42; // 38px + 10%
+const BAR_MEASURE_PAD = 22;
 
 /** Gantt bar — label is shown only when the full text fits; otherwise color only. */
 function TeamBar({
@@ -47,7 +51,7 @@ function TeamBar({
     if (!bar || !measure) return;
 
     const update = () => {
-      const paddingX = 20;
+      const paddingX = BAR_MEASURE_PAD;
       const gap = run.pending ? 14 : 0;
       const available = bar.clientWidth - paddingX - gap;
       setShowLabel(available > 0 && measure.scrollWidth <= available);
@@ -73,7 +77,7 @@ function TeamBar({
         className={`team-bar ${run.pending ? 'pending' : 'approved'}${showLabel ? '' : ' team-bar--no-label'}`}
         style={
           {
-            gridColumn: `${run.startDay + 1} / span ${run.endDay - run.startDay + 1}`,
+            gridColumn: `${run.startCol} / span ${run.colSpan}`,
             gridRow: 1,
             '--c': run.type.color,
           } as CSSProperties
@@ -96,34 +100,63 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
   // Group the Gantt by team only when the user belongs to more than one team.
   const grouped = myTeams.length > 1;
 
-  /* Continuous absence segments for one employee within the visible month.
-     One entry per request -> renders as a SINGLE bar spanning its days. */
-  const teamRuns = (empId: string, yr: number, m: number) => {
-    const lastDay = new Date(yr, m + 1, 0).getDate();
-    const monthStart = `${yr}-${pad(m + 1)}-01`;
-    const monthEnd = `${yr}-${pad(m + 1)}-${pad(lastDay)}`;
-    return requests
-      .filter((r) => r.employeeId === empId && r.status !== 'rejected' && r.start <= monthEnd && r.end >= monthStart)
+  const year = monthDate.getFullYear();
+  const mo = monthDate.getMonth();
+  const daysInMonth = new Date(year, mo + 1, 0).getDate();
+
+  const boardRef = useRef<HTMLDivElement>(null);
+  const [trailCount, setTrailCount] = useState(0);
+
+  useLayoutEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+
+    const update = () => {
+      const slack = board.clientWidth - NAME_COL_W - daysInMonth * CELL_SIZE;
+      const extra = slack > CELL_SIZE * 0.5 ? Math.min(14, Math.ceil(slack / CELL_SIZE)) : 0;
+      setTrailCount((prev) => (prev === extra ? prev : extra));
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(board);
+    return () => ro.disconnect();
+  }, [daysInMonth, monthDate]);
+
+  const days: Date[] = [];
+  for (let d = 1; d <= daysInMonth; d++) {
+    days.push(new Date(year, mo, d));
+  }
+  for (let d = 1; d <= trailCount; d++) {
+    days.push(new Date(year, mo + 1, d));
+  }
+
+  const dayKeys = days.map((dt) => toKey(dt));
+  const rangeStart = dayKeys[0];
+  const rangeEnd = dayKeys[dayKeys.length - 1];
+
+  /* Continuous absence segments within the visible day range (month + trailing days). */
+  const teamRuns = (empId: string) =>
+    requests
+      .filter(
+        (r) => r.employeeId === empId && r.status !== 'rejected' && r.start <= rangeEnd && r.end >= rangeStart,
+      )
       .map((r) => {
-        const s = r.start < monthStart ? monthStart : r.start;
-        const e = r.end > monthEnd ? monthEnd : r.end;
+        const s = r.start < rangeStart ? rangeStart : r.start;
+        const e = r.end > rangeEnd ? rangeEnd : r.end;
+        const startIdx = dayKeys.indexOf(s);
+        const endIdx = dayKeys.indexOf(e);
+        if (startIdx < 0 || endIdx < 0) return null;
         return {
           request: r,
           type: absenceTypeMeta(r.type),
           pending: r.status === 'pending',
-          startDay: fromKey(s).getDate(),
-          endDay: fromKey(e).getDate(),
+          startCol: startIdx + 2,
+          colSpan: endIdx - startIdx + 1,
         };
-      });
-  };
+      })
+      .filter((run): run is TeamBarRun => run !== null);
 
-  const year = monthDate.getFullYear();
-  const mo = monthDate.getMonth();
-  const last = new Date(year, mo + 1, 0).getDate();
-  const days: Date[] = [];
-  for (let d = 1; d <= last; d++) {
-    days.push(new Date(year, mo, d));
-  }
   const tKey = todayKey();
   const holidayByKey: Record<string, CompanyDay> = {};
   days.forEach((dt) => {
@@ -132,14 +165,22 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
     if (hits.length) holidayByKey[k] = hits[0];
   });
 
-  const nameW = 210;
-  const gridCols = `${nameW}px repeat(${days.length}, minmax(34px, 1fr))`;
+  const gridCols = `${NAME_COL_W}px repeat(${days.length}, ${CELL_SIZE}px)`;
+  const teamLayoutStyle = {
+    '--team-cell': `${CELL_SIZE}px`,
+    '--team-bar-h': '26px',
+    '--team-bar-pad-x': '11px',
+    '--team-bar-margin': '3px',
+    '--team-bar-font': '12px',
+    '--team-bar-dot': '9px',
+    '--team-today-badge': '24px',
+  } as CSSProperties;
 
   // One employee row. `groupId` disambiguates keys when a member appears in
   // more than one team group.
   const renderRow = (id: string, groupId?: string) => {
     const emp = empById(id);
-    const runs = teamRuns(id, year, mo);
+    const runs = teamRuns(id);
     return (
       <div key={groupId ? `${groupId}:${id}` : id} className="team-row" style={{ gridTemplateColumns: gridCols }}>
         <div className="team-name" style={{ gridColumn: 1, gridRow: 1 }}>
@@ -150,10 +191,11 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
           const k = toKey(dt);
           const we = isWeekend(dt);
           const hol = holidayByKey[k];
+          const otherMonth = dt.getMonth() !== mo;
           return (
             <div
               key={k}
-              className={`team-cell ${we ? 'weekend' : ''} ${hol ? 'holiday' : ''}`}
+              className={`team-cell ${we ? 'weekend' : ''} ${hol ? 'holiday' : ''} ${otherMonth ? 'other-month' : ''}`}
               style={{ gridColumn: i + 2, gridRow: 1 }}
             />
           );
@@ -174,7 +216,6 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
   // auto-scroll to center TODAY when the board opens / month changes.
   // scrollIntoView is direction-agnostic, so it centers correctly under RTL too
   // (where scrollLeft/offsetLeft arithmetic differs across browsers).
-  const boardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const board = boardRef.current;
     if (!board) return;
@@ -214,7 +255,7 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
       />
 
       <div className="card team-board" ref={boardRef}>
-        <div className="team-grid">
+        <div className="team-grid" style={teamLayoutStyle}>
           {/* header */}
           <div className="team-head-row" style={{ gridTemplateColumns: gridCols }}>
             <div className="team-corner" />
@@ -223,10 +264,11 @@ export function TeamView({ onOpenRequest }: TeamViewProps) {
               const we = isWeekend(dt);
               const today = k === tKey;
               const hol = holidayByKey[k];
+              const otherMonth = dt.getMonth() !== mo;
               return (
                 <div
                   key={k}
-                  className={`team-dayhead ${we ? 'weekend' : ''} ${today ? 'today' : ''} ${hol ? 'holiday' : ''}`}
+                  className={`team-dayhead ${we ? 'weekend' : ''} ${today ? 'today' : ''} ${hol ? 'holiday' : ''} ${otherMonth ? 'other-month' : ''}`}
                   title={hol ? t('calendar.holidayTitle', { name: hol.name }) : ''}
                 >
                   <div>{dayShort(dt.getDay())}</div>

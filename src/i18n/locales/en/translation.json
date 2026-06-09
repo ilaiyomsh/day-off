@@ -150,6 +150,8 @@
       "colSubmitted": "When submitted",
       "colDocument": "Document",
       "submitted": "Submitted {{rel}}",
+      "decided": "Handled {{rel}}",
+      "emptyGroup": "No requests in this group",
       "balance": "Balance: {{count}} days",
       "emptyTitle": "All handled",
       "emptySub": "No pending requests to approve",
@@ -294,7 +296,8 @@
     "employeeNote": "Employee note",
     "managerNote": "Manager note",
     "employeeNoteEmpty": "No note from the employee",
-    "managerNotePending": "Will be written upon approval / rejection",
+    "employeeNotePlaceholder": "A note for the team or manager…",
+    "managerNotePlaceholder": "A note for the employee…",
     "managerNoteEmpty": "No note from the manager",
     "reject": "Reject",
     "approve": "Approve"
@@ -348,6 +351,7 @@
     "requestsApproved_other": "{{count}} requests approved",
     "requestCancelled": "The request was cancelled",
     "documentAttached": "Document attached",
+    "noteSaved": "Note saved",
     "companyDayUpdated": "The company day was updated",
     "companyDayAdded": "The company day was added",
     "companyDayDeleted": "The company day was deleted"

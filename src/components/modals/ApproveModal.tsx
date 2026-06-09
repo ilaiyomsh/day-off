@@ -22,7 +22,7 @@ interface ApproveModalProps {
 export function ApproveModal({ request, onClose, onConfirm, busy }: ApproveModalProps) {
   const { t } = useL10n();
   const { empById } = useDayOffData();
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(request.managerNote ?? '');
   const emp = empById(request.employeeId);
   const typeMeta = ABSENCE_TYPES[request.type] ?? { id: request.type, labelKey: request.type, color: 'var(--color-primary)', index: 0 };
 

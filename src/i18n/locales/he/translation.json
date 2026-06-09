@@ -150,6 +150,8 @@
       "colSubmitted": "מתי הוגש",
       "colDocument": "מסמך",
       "submitted": "הוגש {{rel}}",
+      "decided": "טופל {{rel}}",
+      "emptyGroup": "אין בקשות בקבוצה זו",
       "balance": "יתרה: {{count}} ימים",
       "emptyTitle": "הכול מטופל",
       "emptySub": "אין בקשות ממתינות לאישור",
@@ -294,7 +296,8 @@
     "employeeNote": "הערת העובד/ת",
     "managerNote": "הערת המנהל",
     "employeeNoteEmpty": "לא צורפה הערה מהעובד/ת",
-    "managerNotePending": "תיכתב בעת האישור / הדחייה",
+    "employeeNotePlaceholder": "הערה לצוות או למנהל/ת…",
+    "managerNotePlaceholder": "הערה לעובד/ת…",
     "managerNoteEmpty": "לא צורפה הערה מהמנהל",
     "reject": "דחייה",
     "approve": "אישור"
@@ -348,6 +351,7 @@
     "requestsApproved_other": "{{count}} בקשות אושרו",
     "requestCancelled": "הבקשה בוטלה",
     "documentAttached": "המסמך צורף",
+    "noteSaved": "ההערה נשמרה",
     "companyDayUpdated": "יום החברה עודכן",
     "companyDayAdded": "יום החברה נוסף",
     "companyDayDeleted": "יום החברה נמחק"

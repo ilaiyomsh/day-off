@@ -18,7 +18,7 @@ export interface RejectModalProps {
 export function RejectModal({ request, onClose, onConfirm }: RejectModalProps) {
   const { t } = useL10n();
   const { empById } = useDayOffData();
-  const [reason, setReason] = useState('');
+  const [reason, setReason] = useState(request.managerNote ?? '');
   const emp = empById(request.employeeId);
   const typeMeta = ABSENCE_TYPES[request.type] ?? { id: request.type, labelKey: request.type, color: 'var(--color-primary)', index: 0 };
 

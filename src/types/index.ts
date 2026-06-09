@@ -115,6 +115,8 @@ export interface DayOffSettings {
   personalTypes: PersonalTypeOption[];
   /** Approval status enum → board status label (pending/approved/rejected). */
   statusValues: StatusValueMap;
+  /** Approval-status labels cache (id/title/color/index) for UI colors. */
+  approvalStatusTypes: PersonalTypeOption[];
   /** Teams — each with its own managers + employees. Source of truth for roles. */
   teams: Team[];
   languageOverride?: Language | null;
@@ -128,6 +130,7 @@ export const DEFAULT_SETTINGS: DayOffSettings = {
   typeValues: { vacation: '', sick: '', reserves: '' },
   personalTypes: [],
   statusValues: { pending: '', approved: '', rejected: '' },
+  approvalStatusTypes: [],
   teams: [],
   languageOverride: null,
   lastModifiedAt: null,

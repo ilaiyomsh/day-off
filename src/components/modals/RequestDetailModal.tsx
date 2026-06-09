@@ -3,8 +3,8 @@
  * cards (employee + manager), and manager/employee footer actions.
  * Ported from the prototype's RequestDetailModal (modals.jsx).
  */
-import { useRef, useState } from 'react';
-import { Avatar, Icon, Modal, Rng, StatusBadge, TypeChip } from '../ui';
+import { useEffect, useRef, useState } from 'react';
+import { Avatar, Icon, MiniLoader, Modal, Rng, StatusBadge, TypeChip } from '../ui';
 import { ABSENCE_TYPES } from '../../domain/absence';
 import { workdaysBetween } from '../../domain/dates';
 import { useL10n } from '../../domain/useL10n';
@@ -29,6 +29,57 @@ export interface RequestDetailModalProps {
   onEdit?: (request: DayOffRequest) => void;
 }
 
+interface EditableNoteProps {
+  value: string;
+  liveValue: string;
+  editable: boolean;
+  placeholder: string;
+  emptyLabel: string;
+  saving: boolean;
+  onChange: (value: string) => void;
+  onSave: () => void;
+  saveLabel: string;
+}
+
+function EditableNote({
+  value,
+  liveValue,
+  editable,
+  placeholder,
+  emptyLabel,
+  saving,
+  onChange,
+  onSave,
+  saveLabel,
+}: EditableNoteProps) {
+  const dirty = value.trim() !== (liveValue ?? '').trim();
+
+  if (!editable) {
+    return (
+      <div className="note-body">
+        {liveValue ? liveValue : <span className="note-empty">{emptyLabel}</span>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="note-edit">
+      <textarea
+        className="textarea note-textarea"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {dirty && (
+        <button type="button" className="btn btn-secondary btn-sm note-save" disabled={saving} onClick={onSave}>
+          {saving ? <MiniLoader size={13} /> : null}
+          {saveLabel}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function RequestDetailModal({
   request,
   viewerIsManager,
@@ -39,11 +90,33 @@ export function RequestDetailModal({
   onEdit,
 }: RequestDetailModalProps) {
   const { t, fmtDate, relDays } = useL10n();
-  const { empById, canAttachDocuments, attachDocument } = useDayOffData();
+  const {
+    requests,
+    empById,
+    canAttachDocuments,
+    attachDocument,
+    saveRequestNotes,
+    canEditEmployeeNote,
+    canEditManagerNote,
+  } = useDayOffData();
+
+  const live = requests.find((r) => r.id === request.id) ?? request;
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [justUploaded, setJustUploaded] = useState(false);
+  const [employeeNote, setEmployeeNote] = useState(live.note ?? '');
+  const [managerNote, setManagerNote] = useState(live.managerNote ?? '');
+  const [savingEmployeeNote, setSavingEmployeeNote] = useState(false);
+  const [savingManagerNote, setSavingManagerNote] = useState(false);
+
+  useEffect(() => {
+    setEmployeeNote(live.note ?? '');
+  }, [live.id, live.note]);
+
+  useEffect(() => {
+    setManagerNote(live.managerNote ?? '');
+  }, [live.id, live.managerNote]);
 
   async function onPickAndUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files && e.target.files[0];
@@ -51,45 +124,65 @@ export function RequestDetailModal({
     if (!f) return;
     setUploading(true);
     try {
-      await attachDocument(request, f);
+      await attachDocument(live, f);
       setJustUploaded(true);
     } finally {
       setUploading(false);
     }
   }
 
-  const emp = empById(request.employeeId);
-  const meta = ABSENCE_TYPES[request.type] ?? { id: request.type, labelKey: request.type, color: 'var(--color-primary)', index: 0 };
-  const workdays = workdaysBetween(request.start, request.end);
-  const decidedBy = request.decidedBy ? empById(request.decidedBy) : null;
-  const canManage = viewerIsManager && request.status === 'pending';
-  const canCancel = !viewerIsManager && request.status === 'pending';
+  async function onSaveEmployeeNote() {
+    setSavingEmployeeNote(true);
+    try {
+      await saveRequestNotes(live, { employeeNote: employeeNote.trim() });
+    } finally {
+      setSavingEmployeeNote(false);
+    }
+  }
+
+  async function onSaveManagerNote() {
+    setSavingManagerNote(true);
+    try {
+      await saveRequestNotes(live, { managerNote: managerNote.trim() });
+    } finally {
+      setSavingManagerNote(false);
+    }
+  }
+
+  const emp = empById(live.employeeId);
+  const meta = ABSENCE_TYPES[live.type] ?? { id: live.type, labelKey: live.type, color: 'var(--color-primary)', index: 0 };
+  const workdays = workdaysBetween(live.start, live.end);
+  const decidedBy = live.decidedBy ? empById(live.decidedBy) : null;
+  const canManage = viewerIsManager && live.status === 'pending';
+  const canCancel = !viewerIsManager && live.status === 'pending';
+  const canEditEmployee = !viewerIsManager && canEditEmployeeNote;
+  const canEditManager = viewerIsManager && canEditManagerNote;
 
   return (
     <Modal
       title={t(meta.labelKey)}
-      sub={<Rng start={request.start} end={request.end} />}
+      sub={<Rng start={live.start} end={live.end} />}
       onClose={onClose}
       footer={
         <>
           {canCancel && (
             <>
               {onEdit && (
-                <button className="btn btn-ghost" onClick={() => onEdit(request)}>
+                <button className="btn btn-ghost" onClick={() => onEdit(live)}>
                   {t('detail.editRequest')}
                 </button>
               )}
-              <button className="btn btn-danger" onClick={() => onCancel(request)}>
+              <button className="btn btn-danger" onClick={() => onCancel(live)}>
                 <Icon name="trash" size={15} /> {t('detail.cancelRequest')}
               </button>
             </>
           )}
           {canManage && (
             <>
-              <button className="btn btn-reject" onClick={() => onReject(request)}>
+              <button className="btn btn-reject" onClick={() => onReject(live)}>
                 <Icon name="x" size={16} /> {t('detail.reject')}
               </button>
-              <button className="btn btn-approve" onClick={() => onApprove(request)}>
+              <button className="btn btn-approve" onClick={() => onApprove(live)}>
                 <Icon name="check" size={16} /> {t('detail.approve')}
               </button>
             </>
@@ -109,7 +202,7 @@ export function RequestDetailModal({
           <div style={{ fontSize: 12.5, color: 'var(--color-text-secondary)' }}>{emp?.title}</div>
         </div>
         <div style={{ marginInlineStart: 'auto' }}>
-          <StatusBadge status={request.status} />
+          <StatusBadge status={live.status} />
         </div>
       </div>
 
@@ -117,13 +210,13 @@ export function RequestDetailModal({
         <div className="detail-row">
           <span className="dl">{t('detail.rowType')}</span>
           <span className="dv">
-            <TypeChip type={request.type} />
+            <TypeChip type={live.type} />
           </span>
         </div>
         <div className="detail-row">
           <span className="dl">{t('detail.rowDates')}</span>
           <span className="dv">
-            <Rng start={request.start} end={request.end} />
+            <Rng start={live.start} end={live.end} />
           </span>
         </div>
         <div className="detail-row">
@@ -133,27 +226,27 @@ export function RequestDetailModal({
         <div className="detail-row">
           <span className="dl">{t('detail.rowSubmitted')}</span>
           <span className="dv">
-            {fmtDate(request.submittedAt)} · {relDays(request.submittedAt)}
+            {fmtDate(live.submittedAt)} · {relDays(live.submittedAt)}
           </span>
         </div>
-        {request.attachment && (
+        {live.attachment && (
           <div className="detail-row">
             <span className="dl">{t('detail.rowDocument')}</span>
             <span className="dv">
-              {request.attachment.url ? (
-                <a className="file-link" href={request.attachment.url} target="_blank" rel="noopener">
+              {live.attachment.url ? (
+                <a className="file-link" href={live.attachment.url} target="_blank" rel="noopener">
                   <Icon name="paperclip" size={15} />
-                  {request.attachment.name}
+                  {live.attachment.name}
                 </a>
               ) : (
                 <span className="file-link" style={{ cursor: 'default' }}>
                   <Icon name="paperclip" size={15} />
-                  {request.attachment.name}
+                  {live.attachment.name}
                 </span>
               )}
-              {request.attachment.size != null && (
+              {live.attachment.size != null && (
                 <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 400, marginInlineStart: 6 }}>
-                  · {fmtFileSize(request.attachment.size)}
+                  · {fmtFileSize(live.attachment.size)}
                 </span>
               )}
             </span>
@@ -161,7 +254,7 @@ export function RequestDetailModal({
         )}
         {decidedBy && (
           <div className="detail-row">
-            <span className="dl">{request.status === 'approved' ? t('detail.decidedByApproved') : t('detail.decidedByRejected')}</span>
+            <span className="dl">{live.status === 'approved' ? t('detail.decidedByApproved') : t('detail.decidedByRejected')}</span>
             <span className="dv">{decidedBy.name}</span>
           </div>
         )}
@@ -181,7 +274,7 @@ export function RequestDetailModal({
                   ? t('detail.uploading')
                   : justUploaded
                     ? t('detail.uploaded')
-                    : request.attachment
+                    : live.attachment
                       ? t('detail.replaceDocument')
                       : t('detail.attachDocument')}
               </button>
@@ -190,32 +283,40 @@ export function RequestDetailModal({
         )}
       </div>
 
-      {/* Two clearly-separated notes — who wrote each is always explicit. */}
       <div className="notes-block">
         <div className="note-card employee">
           <div className="note-head">
             <Icon name="user" size={13} /> {t('detail.employeeNote')}
           </div>
-          <div className="note-body">
-            {request.note ? request.note : <span className="note-empty">{t('detail.employeeNoteEmpty')}</span>}
-          </div>
+          <EditableNote
+            value={employeeNote}
+            liveValue={live.note ?? ''}
+            editable={canEditEmployee}
+            placeholder={t('detail.employeeNotePlaceholder')}
+            emptyLabel={t('detail.employeeNoteEmpty')}
+            saving={savingEmployeeNote}
+            onChange={setEmployeeNote}
+            onSave={onSaveEmployeeNote}
+            saveLabel={t('common.save')}
+          />
         </div>
-        <div className={`note-card manager ${request.status === 'rejected' ? 'danger' : ''}`}>
+        <div className={`note-card manager ${live.status === 'rejected' ? 'danger' : ''}`}>
           <div className="note-head">
             <Icon name="check" size={13} /> {t('detail.managerNote')}
           </div>
-          <div className="note-body">
-            {request.managerNote ? (
-              request.managerNote
-            ) : (
-              <span className="note-empty">
-                {request.status === 'pending' ? t('detail.managerNotePending') : t('detail.managerNoteEmpty')}
-              </span>
-            )}
-          </div>
+          <EditableNote
+            value={managerNote}
+            liveValue={live.managerNote ?? ''}
+            editable={canEditManager}
+            placeholder={t('detail.managerNotePlaceholder')}
+            emptyLabel={t('detail.managerNoteEmpty')}
+            saving={savingManagerNote}
+            onChange={setManagerNote}
+            onSave={onSaveManagerNote}
+            saveLabel={t('common.save')}
+          />
         </div>
       </div>
-
     </Modal>
   );
 }

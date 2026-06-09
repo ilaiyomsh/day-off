@@ -2,7 +2,7 @@
  * Absence-type runtime config + balance analytics (pure).
  * Personal absence types are dynamic and derived from monday status labels.
  */
-import type { PersonalTypeOption } from '../types';
+import type { PersonalTypeOption, StatusValueMap } from '../types';
 import type { AbsenceType, Balance, DayOffRequest, Entitlement, RequestStatus } from './types';
 import { eachDay, fromKey, isWeekend, workdaysBetween } from './dates';
 
@@ -68,6 +68,30 @@ export const STATUS_LABEL_KEY: Record<RequestStatus, string> = {
   approved: 'status.approved',
   rejected: 'status.rejected',
 };
+
+const STATUS_FALLBACK_COLOR: Record<RequestStatus, string> = {
+  pending: 'var(--color-warning)',
+  approved: 'var(--color-approval-green)',
+  rejected: 'var(--color-danger)',
+};
+
+function normalizeStatusLabel(label: string | undefined | null): string {
+  return (label ?? '').trim().toLowerCase();
+}
+
+/** Resolve UI color for a request status from settings label mapping + column snapshot. */
+export function resolveStatusColor(
+  status: RequestStatus,
+  statusValues: StatusValueMap,
+  approvalStatusTypes: PersonalTypeOption[],
+): string {
+  const mapped = normalizeStatusLabel(statusValues[status]);
+  if (mapped) {
+    const hit = approvalStatusTypes.find((opt) => normalizeStatusLabel(opt.title) === mapped);
+    if (hit?.color) return hit.color;
+  }
+  return STATUS_FALLBACK_COLOR[status];
+}
 
 /** Year a request is attributed to (its start year) — matches the prototype's balance logic. */
 export function requestYear(r: Pick<DayOffRequest, 'start'>): number {
