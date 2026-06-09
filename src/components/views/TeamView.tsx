@@ -66,6 +66,9 @@ function TeamBar({
   return (
     <Tooltip
       showDelay={0}
+      // Portal to body + high z-index so the tooltip is never clipped behind a bar in an adjacent row.
+      getContainer={() => document.body}
+      zIndex={2200}
       content={t('views.team.barTitle', {
         name: empName,
         type: label,
