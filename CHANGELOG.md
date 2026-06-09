@@ -23,8 +23,23 @@
   - _Requested:_ Read the day-off handoff bundle and implement index.html — full app, wired to monday boards, i18n now, no persona/tweaks/theme dev controls
   - _Done:_ Planned: recreate the Claude Design Day-off prototype pixel-perfectly in the React 19 + TS + Vite app, wired to real monday boards, with all strings extracted to i18next and the dev-only persona/tweaks/theme controls dropped. Built the deterministic foundation inline (verbatim CSS port, pure domain/date layer + i18n binding, expanded DayOffSettings with board/column/team maps) then fanned the rest out via a 23-agent workflow: monday services (columnMap + requests/companyDays/entitlements/users), the DayOffDataProvider data hook, the Settings dialog, 13 UI components, 5 views, 6 modals, the app shell, and tests. Verified green end-to-end: typecheck, lint (0 errors), 58 tests across 3 timezones, production build, and a full i18n audit (he/en mirror, 276 keys, all literal+dynamic keys resolve). Deviations: new-attachment file upload deferred to v1 (needs monday's multipart endpoint); the company-day 'mandatory' field maps to a Checkbox column; long-text note columns are written as {text}; two date-glyph i18n keys were added to keep dates.ts literal-free. Live in-monday smoke test is pending an app ID + three configured boards.
 
+### 🔧 Feature Changes
+
+- **2026-06-09** — Theme status badges by board status colors and make employee/manager notes editable inline, with relative decided-time and per-group empty states across Approvals and request detail. `d5b33bb`
+  - _Why:_ Make request status visually match the configured board and let notes be edited inline, improving the approvals workflow.
+  - _Requested:_ תעשה סדר בעצי עבודה וענפים ושינויים — לקמט אצווה לא-מתועדת של שיפורי אישורים/סטטוס
+  - _Done:_ Added an approvalStatusTypes color cache to DayOffSettings (types/index.ts, DEFAULT_SETTINGS) and a statusColor() resolver wired through DayOffDataProvider; StatusBadge now renders a themed pill via a --status-color CSS var (app.css). Made employee and manager notes editable in RequestDetailModal with placeholder text and a 'noteSaved' toast, persisted via vacationService. ApprovalsView gained per-group empty states, a 'decided {rel}' relative timestamp, and themed badges; TeamView, EmployeeView and the absence domain updated to resolve status colors. SettingsDialog syncs the approvalStatusTypes cache; i18n (he/en) and the settings test updated accordingly.
+- **2026-06-09** — Merge Board and Mapping into one tab and replace board-id input with a paginated board picker filtered by object-type boards. `c6f07fc`
+  - _Why:_ Improve settings UX and reduce config errors.
+  - _Requested:_ לוח ומיפוי עמודות יכול להיות באותו טטאב, כאשר שדה בחירת הלוח יהיה אובייקט boardpicker, אתה יכול לבדוק בתיקייה apps/discussions איך זה בנוי. מציג את שם הלוח ולא את המזהה ומסנן את כל הלוחות בחשבון בעזרת עימוד וסוג אובייקט
+  - _Done:_ Merged the Board and Mapping settings into a single BoardAndMappingTab and replaced the raw board-id input with a paginated, object-type-filtered board picker (SearchableSelect). Implemented in commit c6f07fc.
+
 ### 🎨 Design
 
+- **2026-06-09** — Update column-mapping UI to a 2-column grid and simplify field labels by removing the column prefix and type suffix. `c6f07fc`
+  - _Why:_ Improve settings form readability and reduce visual noise.
+  - _Requested:_ מיפוי העמודות צריך להיות בגריד של 2 עמודות. אין צורך לכתוב בסוגריים את סוג העמודה ואין צורך במילה 'עמודת' לכל שדה.
+  - _Done:_ Reworked the column-mapping UI into a 2-column grid and simplified field labels by dropping the column prefix and type suffix. Implemented in commit c6f07fc.
 - **2026-06-08** — Move Company-days (ימי חברה) from a top-level nav tab into the Settings dialog as a new tab (managed via the existing CompanyDayModal), and widen the Team-availability (זמינות צוות) Gantt to ~95% of screen width with a minimum cell width + horizontal scroll, aligning its header with the other tabs. `f105547`
   - _Why:_ User wants company-days configured from Settings rather than a standalone tab, and the team Gantt to use the full screen width with scroll when needed.
   - _Requested:_ 1) להעביר טאב ימי חברה לתוך תיבת ההגדרות (שיוגדרו מתוך ההגדרות). 2) להרחיב את גאנט זמינות צוות ל-95% מרוחב המסך עם רוחב תא מינימלי וגלילה בעת הצורך, ומיקום כותרת זהה לשאר הטאבים.
