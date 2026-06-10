@@ -338,13 +338,6 @@ export const mondayApi = {
     )) as { boards?: { columns?: RawBoardColumn[] }[] };
     const col = (data.boards?.[0]?.columns ?? []).find((c) => String(c.id ?? '') === columnId);
     const snapshot = parseStatusColumnSnapshot(col);
-    logger.error('mondayApi', 'DEBUG status column snapshot loaded', {
-      boardId: String(boardId),
-      columnId,
-      columnType: col?.type,
-      labelsCount: snapshot.length,
-      revision: col?.revision,
-    });
     return { labels: snapshot, revision: col?.revision };
   },
 

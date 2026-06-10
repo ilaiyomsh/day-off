@@ -356,7 +356,8 @@
     "noteSaved": "ההערה נשמרה",
     "companyDayUpdated": "יום החברה עודכן",
     "companyDayAdded": "יום החברה נוסף",
-    "companyDayDeleted": "יום החברה נמחק"
+    "companyDayDeleted": "יום החברה נמחק",
+    "writeBlockedInvalidSettings": "הפעולה נחסמה: הגדרות הלוח חסרות או לא תקינות. השלם את המיפוי במסך ההגדרות ונסה שוב."
   },
   "settings": {
     "title": "הגדרות",

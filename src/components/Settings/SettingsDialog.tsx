@@ -565,12 +565,6 @@ function BoardAndMappingTab({
       .getStatusColumnSnapshot(boardId, columnId)
       .then((snapshot) => {
         if (cancelled) return;
-        logger.error('SettingsDialog', 'DEBUG synced personal-type status labels', {
-          boardId,
-          columnId,
-          columnType: personalTypeColumn?.type,
-          labelsCount: snapshot.length,
-        });
         setField('personalTypes', snapshot as DayOffSettings['personalTypes']);
         setLivePersonalTypes(snapshot);
       })
@@ -611,12 +605,6 @@ function BoardAndMappingTab({
       .getStatusColumnSnapshot(boardId, columnId)
       .then((snapshot) => {
         if (cancelled) return;
-        logger.error('SettingsDialog', 'DEBUG synced kind status labels', {
-          boardId,
-          columnId,
-          columnType: kindColumn?.type,
-          labelsCount: snapshot.length,
-        });
         setKindOptions(snapshot);
       })
       .catch((err) => {
@@ -654,12 +642,6 @@ function BoardAndMappingTab({
       .getStatusColumnSnapshot(boardId, columnId)
       .then((snapshot) => {
         if (cancelled) return;
-        logger.error('SettingsDialog', 'DEBUG synced approval status labels', {
-          boardId,
-          columnId,
-          columnType: approvalStatusColumn?.type,
-          labelsCount: snapshot.length,
-        });
         setApprovalStatusOptions(snapshot);
       })
       .catch((err) => {

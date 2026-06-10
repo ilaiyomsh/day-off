@@ -356,7 +356,8 @@
     "noteSaved": "Note saved",
     "companyDayUpdated": "The company day was updated",
     "companyDayAdded": "The company day was added",
-    "companyDayDeleted": "The company day was deleted"
+    "companyDayDeleted": "The company day was deleted",
+    "writeBlockedInvalidSettings": "Action blocked: board settings are missing or invalid. Complete the mapping in Settings and try again."
   },
   "settings": {
     "title": "Settings",

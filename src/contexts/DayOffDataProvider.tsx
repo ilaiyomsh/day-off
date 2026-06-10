@@ -252,6 +252,19 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
     window.setTimeout(() => setToasts((ts) => ts.filter((x) => x.id !== id)), TOAST_TTL_MS);
   }, []);
 
+  // W1.3 corollary: vacCtx is null whenever settings are invalid. The READ path
+  // surfaces that via the misconfiguration screen; a user-triggered WRITE must
+  // fail loudly too - never a silent no-op.
+  const requireVacCtx = useCallback(
+    (operation: string): VacationCtx | null => {
+      if (vacCtx) return vacCtx;
+      logger.error('DayOffData', 'write blocked - settings invalid or board unconfigured', { operation });
+      toast(t('toasts.writeBlockedInvalidSettings'), 'danger');
+      return null;
+    },
+    [vacCtx, toast, t],
+  );
+
   // ---- loaders ----
   // One board read → split into personal requests + general company days.
   const loadEntries = useCallback(async (): Promise<void> => {
@@ -385,12 +398,13 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
   // ---- mutations: API write -> re-fetch affected list -> toast ----
   const submitRequest = useCallback(
     async (draft: RequestDraft, editingId?: string): Promise<boolean> => {
-      if (!vacCtx) return false;
+      const ctx = requireVacCtx('submitRequest');
+      if (!ctx) return false;
       try {
         if (editingId) {
-          await updateRequest(vacCtx, editingId, draft, currentUser.name, currentUser.id);
+          await updateRequest(ctx, editingId, draft, currentUser.name, currentUser.id);
         } else {
-          await createRequest(vacCtx, currentUser.id, draft, currentUser.name);
+          await createRequest(ctx, currentUser.id, draft, currentUser.name);
         }
         await loadEntries();
         toast(editingId ? t('toasts.requestUpdated') : t('toasts.requestSent'), 'success');
@@ -400,15 +414,16 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [vacCtx, currentUser.id, currentUser.name, loadEntries, toast, t, handleError],
+    [requireVacCtx, currentUser.id, currentUser.name, loadEntries, toast, t, handleError],
   );
 
   const approve = useCallback(
     async (r: DayOffRequest, note?: string): Promise<boolean> => {
-      if (!vacCtx) return false;
+      const ctx = requireVacCtx('approve');
+      if (!ctx) return false;
       const mn = note && note.trim() ? note.trim() : undefined;
       try {
-        await setStatus(vacCtx, r.id, 'approved', currentUser.id, todayKey(), mn);
+        await setStatus(ctx, r.id, 'approved', currentUser.id, todayKey(), mn);
         await loadEntries();
         toast(t('toasts.requestApproved'), 'success');
         return true;
@@ -417,38 +432,40 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [vacCtx, currentUser.id, loadEntries, toast, t, handleError],
+    [requireVacCtx, currentUser.id, loadEntries, toast, t, handleError],
   );
 
   const reject = useCallback(
     async (r: DayOffRequest, reason?: string) => {
-      if (!vacCtx) return;
+      const ctx = requireVacCtx('reject');
+      if (!ctx) return;
       const mn = reason && reason.trim() ? reason.trim() : undefined;
       try {
-        await setStatus(vacCtx, r.id, 'rejected', currentUser.id, todayKey(), mn);
+        await setStatus(ctx, r.id, 'rejected', currentUser.id, todayKey(), mn);
         await loadEntries();
         toast(t('toasts.requestRejected'), 'danger');
       } catch (err) {
         handleError(err, { operation: 'DayOffData.reject' });
       }
     },
-    [vacCtx, currentUser.id, loadEntries, toast, t, handleError],
+    [requireVacCtx, currentUser.id, loadEntries, toast, t, handleError],
   );
 
   const approveAll = useCallback(async () => {
-    if (!vacCtx) return;
+    const ctx = requireVacCtx('approveAll');
+    if (!ctx) return;
     const pend = requests.filter((r) => r.status === 'pending');
     if (!pend.length) return;
     try {
       for (const r of pend) {
-        await setStatus(vacCtx, r.id, 'approved', currentUser.id, todayKey());
+        await setStatus(ctx, r.id, 'approved', currentUser.id, todayKey());
       }
       await loadEntries();
       toast(t('toasts.requestsApproved', { count: pend.length }), 'success');
     } catch (err) {
       handleError(err, { operation: 'DayOffData.approveAll' });
     }
-  }, [vacCtx, requests, currentUser.id, loadEntries, toast, t, handleError]);
+  }, [requireVacCtx, requests, currentUser.id, loadEntries, toast, t, handleError]);
 
   const cancelRequest = useCallback(
     async (r: DayOffRequest) => {
@@ -465,16 +482,17 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
 
   const attachDocument = useCallback(
     async (r: DayOffRequest, file: File) => {
-      if (!vacCtx) return;
+      const ctx = requireVacCtx('attachDocument');
+      if (!ctx) return;
       try {
-        await uploadAttachment(vacCtx, r.id, file);
+        await uploadAttachment(ctx, r.id, file);
         await loadEntries();
         toast(t('toasts.documentAttached'), 'success');
       } catch (err) {
         handleError(err, { operation: 'DayOffData.attachDocument' });
       }
     },
-    [vacCtx, loadEntries, toast, t, handleError],
+    [requireVacCtx, loadEntries, toast, t, handleError],
   );
   const canAttachDocuments = !!vacCtx?.cols.fileColumnId;
   const canEditEmployeeNote = !!vacCtx?.cols.empNoteColumnId;
@@ -482,9 +500,10 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
 
   const saveRequestNotes = useCallback(
     async (r: DayOffRequest, notes: { employeeNote?: string; managerNote?: string }): Promise<boolean> => {
-      if (!vacCtx) return false;
+      const ctx = requireVacCtx('saveRequestNotes');
+      if (!ctx) return false;
       try {
-        await updateRequestNotes(vacCtx, r.id, notes);
+        await updateRequestNotes(ctx, r.id, notes);
         await loadEntries();
         toast(t('toasts.noteSaved'), 'success');
         return true;
@@ -493,21 +512,22 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
         return false;
       }
     },
-    [vacCtx, loadEntries, toast, t, handleError],
+    [requireVacCtx, loadEntries, toast, t, handleError],
   );
 
   const saveCompanyDay = useCallback(
     async (draft: CompanyDayDraft) => {
-      if (!vacCtx) return;
+      const ctx = requireVacCtx('saveCompanyDay');
+      if (!ctx) return;
       try {
-        await saveCompanyDayApi(vacCtx, draft);
+        await saveCompanyDayApi(ctx, draft);
         await loadEntries();
         toast(draft.id ? t('toasts.companyDayUpdated') : t('toasts.companyDayAdded'), 'success');
       } catch (err) {
         handleError(err, { operation: 'DayOffData.saveCompanyDay' });
       }
     },
-    [vacCtx, loadEntries, toast, t, handleError],
+    [requireVacCtx, loadEntries, toast, t, handleError],
   );
 
   const deleteCompanyDay = useCallback(
