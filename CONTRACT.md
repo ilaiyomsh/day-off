@@ -91,9 +91,16 @@ Lifecycle facts consumers must know:
      approved set; the approval column + approved-label mapping become required settings
      (validated). Planner: only approved items reduce capacity. tracker: pending items render
      unfilled (hollow), approved render filled.
-   - **OFF** → count **all** personal items regardless of approval state.
-   - Rejected-state handling under OFF follows the same rule literally: OFF counts all items.
-     (If a deployment wants rejected excluded, it turns the policy ON.)
+   - **OFF** → count all personal items **except rejected ones** (pending + approved + empty
+     approval all count; approval state is otherwise informational).
+   - **Rejected items are excluded by every consumer REGARDLESS of the policy toggle**
+     (D2 amendment, user decision 2026-06-10 — supersedes the original "OFF counts all
+     items literally" rule). Rejection only marks the item (`approvalStatus = rejected`);
+     the item stays on the board and stays visible inside Day-off itself (the request's
+     owner and managers see its history) — it must simply never reduce capacity in Planner
+     nor render in tracker. Consumers therefore need the **rejected-label mapping even when
+     the policy is OFF**; with no rejected mapping configured a consumer cannot exclude
+     them (documented degradation — map it).
 3. **Identity join:** the person column's user ID ↔ Planner `Employee.id` ↔ tracker's current
    user ID. ⚠️ If Planner's Employees-board user column is unmapped, `Employee.id` falls back
    to the board item ID and the join silently misses — consumers must validate their identity
