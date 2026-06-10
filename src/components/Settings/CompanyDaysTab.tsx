@@ -19,6 +19,7 @@ export function CompanyDaysTab() {
   const [filterYear, setFilterYear] = useState(year);
   // null = closed; { initial } = open (initial undefined → add, CompanyDay → edit).
   const [modal, setModal] = useState<{ initial?: CompanyDay | null } | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const tKey = todayKey();
   const all = companyDays
@@ -90,10 +91,17 @@ export function CompanyDaysTab() {
       {modal && (
         <CompanyDayModal
           initial={modal.initial}
+          busy={saving}
           onClose={() => setModal(null)}
           onSave={(draft) => {
-            void saveCompanyDay(draft);
-            setModal(null);
+            void (async () => {
+              setSaving(true);
+              const ok = await saveCompanyDay(draft);
+              setSaving(false);
+              // Failure keeps the modal open (input preserved); the provider
+              // already surfaced the error.
+              if (ok) setModal(null);
+            })();
           }}
           onDelete={(h) => {
             void deleteCompanyDay(h);

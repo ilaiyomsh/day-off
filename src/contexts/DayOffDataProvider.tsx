@@ -102,7 +102,7 @@ export interface DayOffData {
   canAttachDocuments: boolean;
   canEditEmployeeNote: boolean;
   canEditManagerNote: boolean;
-  saveCompanyDay: (draft: CompanyDayDraft) => Promise<void>;
+  saveCompanyDay: (draft: CompanyDayDraft) => Promise<boolean>;
   deleteCompanyDay: (h: CompanyDay) => Promise<void>;
   toasts: Toast[];
   toast: (text: string, variant?: ToastVariant) => void;
@@ -516,15 +516,17 @@ export function DayOffDataProvider({ children }: { children: ReactNode }) {
   );
 
   const saveCompanyDay = useCallback(
-    async (draft: CompanyDayDraft) => {
+    async (draft: CompanyDayDraft): Promise<boolean> => {
       const ctx = requireVacCtx('saveCompanyDay');
-      if (!ctx) return;
+      if (!ctx) return false;
       try {
         await saveCompanyDayApi(ctx, draft);
         await loadEntries();
         toast(draft.id ? t('toasts.companyDayUpdated') : t('toasts.companyDayAdded'), 'success');
+        return true;
       } catch (err) {
         handleError(err, { operation: 'DayOffData.saveCompanyDay' });
+        return false;
       }
     },
     [requireVacCtx, loadEntries, toast, t, handleError],
