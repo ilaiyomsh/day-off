@@ -6,6 +6,10 @@
 
 ### 🐛 Bug Fixes
 
+- **2026-06-10** — Fix infinite refetch/flicker loop in SettingsDialog label-mapping sections: stabilize SettingsDialogShell.setField identity (app-core useCallback) so the three status-snapshot sync effects stop re-triggering on every draft update; remove 4 leftover DEBUG logger.error calls (SettingsDialog x3, mondayApi x1) that flooded the production console `a908932`
+  - _Why:_ User reported the personal-type mapping section flickering between loading and labels after the 2026-06-10 deploy; console showed an endless snapshot-loaded/synced loop. Root cause: setField recreated every render + effect cleanup resetting the dedup key
+  - _Requested:_ משום מה לא נטענת עמודת סיווג ימים אישיים — מהבהב עם הלייבלים; קונסול מוצף בהודעות DEBUG
+  - _Done:_ Planned to stop the settings-dialog flicker loop the user reported right after the 2026-06-10 deploy. Root cause: app-core's SettingsDialogShell recreated setField every render while the three status-snapshot sync effects depend on its identity and reset their dedup key in cleanup - memoized setField in the shell (the fix lives in Services/axis-app-core, which has no git repo) and locked it with a new render-based regression test. Deviation: while investigating, the user's second report (company-day save doing nothing) exposed that ALL provider writes silently no-op when W1.3 validation invalidates vacCtx - added a requireVacCtx guard that logs and toasts a clear he/en explanation instead. Also removed 4 leftover DEBUG logger.error calls flooding the production console.
 - **2026-06-09** — Portal the Team Gantt bar Tooltip to document.body with a high z-index so it is no longer clipped behind absence bars in adjacent rows. `9a773bf`
   - _Why:_ The vibe Tooltip rendered inline inside the bar's grid cell, so a bar in the row above painted over it.
   - _Requested:_ טולטיפ תמיד למעלה, פה הוא מוסתר מאחורי בר אחר
