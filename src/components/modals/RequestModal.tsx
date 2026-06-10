@@ -34,8 +34,9 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit, busy }: 
   const { t } = useL10n();
   const { balanceFor, companyDays } = useDayOffData();
 
-  const firstType = TYPE_ORDER[0] ?? 'vacation';
-  const [type, setType] = useState<AbsenceType>(initial?.type || firstType);
+  // No default type (change #76): a new request opens with NOTHING selected —
+  // the required type must be a conscious choice. Editing keeps the saved type.
+  const [type, setType] = useState<AbsenceType | ''>(initial?.type || '');
   const [start, setStart] = useState(initial?.start || todayKey());
   const [end, setEnd] = useState(initial?.end || initial?.start || todayKey());
   const [note, setNote] = useState(initial?.note || '');
@@ -43,7 +44,9 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit, busy }: 
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (TYPE_ORDER.length > 0 && !TYPE_ORDER.includes(type)) setType(TYPE_ORDER[0]);
+    // A selected type whose label was removed from the board falls back to
+    // unselected (not to an arbitrary first type).
+    if (type && TYPE_ORDER.length > 0 && !TYPE_ORDER.includes(type)) setType('');
   }, [type]);
 
   function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -58,14 +61,15 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit, busy }: 
     if (end < v) setEnd(v);
   }
 
-  const valid = !!(start && end && end >= start);
-  const workdays = valid ? workdaysBetween(start, end) : 0;
-  const calDays = valid ? calDaysBetween(start, end) : 0;
+  const datesValid = !!(start && end && end >= start);
+  const valid = !!type && datesValid;
+  const workdays = datesValid ? workdaysBetween(start, end) : 0;
+  const calDays = datesValid ? calDaysBetween(start, end) : 0;
 
   // overlapping company days within range
-  const overlapHolidays = valid ? companyDays.filter((h) => h.start <= end && h.end >= start) : [];
+  const overlapHolidays = datesValid ? companyDays.filter((h) => h.start <= end && h.end >= start) : [];
 
-  const bal = valid ? balanceFor(Number(start.slice(0, 4)), currentUser.id, type) : null;
+  const bal = type && datesValid ? balanceFor(Number(start.slice(0, 4)), currentUser.id, type) : null;
   // Quotas were removed (entitled is always 0) → no remaining/over-balance hints.
   const remaining = bal && bal.entitled > 0 ? bal.entitled - bal.used : null;
   const overBalance = remaining != null && workdays > remaining;
@@ -84,9 +88,10 @@ export function RequestModal({ currentUser, initial, onClose, onSubmit, busy }: 
           <button
             className="btn btn-primary"
             disabled={!valid || busy}
-            onClick={() =>
-              onSubmit({ type, start, end, note: note.trim(), attachment: attachment || undefined })
-            }
+            onClick={() => {
+              if (!type) return; // unreachable while disabled — narrows the union
+              onSubmit({ type, start, end, note: note.trim(), attachment: attachment || undefined });
+            }}
           >
             {busy ? <MiniLoader size={15} /> : null}
             {t('request.submit')}
