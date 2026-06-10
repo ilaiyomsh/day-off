@@ -44,6 +44,10 @@
 
 ### 🔧 Feature Changes
 
+- **2026-06-10** — Relocate the W1.5 consumer label warning to where it is true: REMOVE it from the personal-type values editor (consumers never store type label IDs - the type set is open per D1, read live, display-only) and ADD it to the kind (general/personal) and approval-status mapping sections, shown when the draft LABEL SELECTION diverges from the saved one - those label IDs ARE cached in Planner/tracker settings and a semantic re-pick silently breaks their filtering `1e40c04`
+  - _Why:_ User correctly flagged the warning as misplaced: it fired on the one column whose labels consumers do not map, and was absent from the two mappings they do cache
+  - _Requested:_ האזהרה לא צריכה להופיע על סיווג אישי כי את הלייבלים האלה לא ממפים בפלאנר ובטראקר; היא צריכה להופיע על אישי/כללי ועל אישור מנהל
+  - _Done:_ Planned per the user's correct observation that the consumer label-ID warning sat on the wrong mapping. Removed it from the personal-type editor (consumers read those labels live, display-only, open set per D1), and added it to the kind and approval-status sections where Planner/tracker really cache label IDs - firing when the draft selection diverges from the SAVED selection, since a semantic re-pick silently breaks consumer filtering. Replaced hasPendingLabelEdits with two pure selection-divergence helpers plus tests; relocated the he/en i18n keys.
 - **2026-06-10** — Company-day save shows a busy loader and the modal closes only after the write succeeds (mirrors the personal-request modal pattern): saveCompanyDay now returns success, CompanyDayModal gets a busy state disabling its buttons with a MiniLoader on Save, and a failed save keeps the modal open so input is not lost `8152e5b`
   - _Why:_ User request: clicking save on a company day gave no feedback before the modal closed; with slow writes (or failures) it felt broken
   - _Requested:_ ביצירה של יום חברה צריך חיווי לאחר לחיצה על שמור - loader כמו ביצירת חופשה אישית לפני שהתיבה תיסגר
