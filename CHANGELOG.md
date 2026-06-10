@@ -44,6 +44,14 @@
 
 ### 🔧 Feature Changes
 
+- **2026-06-10** — Company-day save shows a busy loader and the modal closes only after the write succeeds (mirrors the personal-request modal pattern): saveCompanyDay now returns success, CompanyDayModal gets a busy state disabling its buttons with a MiniLoader on Save, and a failed save keeps the modal open so input is not lost `8152e5b`
+  - _Why:_ User request: clicking save on a company day gave no feedback before the modal closed; with slow writes (or failures) it felt broken
+  - _Requested:_ ביצירה של יום חברה צריך חיווי לאחר לחיצה על שמור - loader כמו ביצירת חופשה אישית לפני שהתיבה תיסגר
+  - _Done:_ Planned to add save feedback to the company-day modal per user request, mirroring the personal-request pattern. saveCompanyDay in the data provider now returns a success boolean; CompanyDayModal accepts busy (locks delete/cancel/save, shows MiniLoader on the save button, the Modal shell blocks Escape); CompanyDaysTab tracks the in-flight save and closes the modal only on success, so a failed write keeps the user's input on screen.
+- **2026-06-10** — New-request modal: absence type starts UNSELECTED - no default. The submit button stays disabled until the user actively picks a type; editing an existing request still opens with its saved type `56ac9e0`
+  - _Why:_ User request: a pre-selected first type (vacation) invites accidental wrong-type submissions; the field is required and should be a conscious choice
+  - _Requested:_ אני לא רוצה שום ברירת מחדל בסוג יום היעדרות
+  - _Done:_ Planned to remove the implicit default absence type in the new-request modal per user request. The type state now starts empty for new requests, the submit button is disabled until a type is chosen, and the stale-type effect resets to unselected (not to the first option) when a selected label no longer exists on the board; editing an existing request still opens with its saved type.
 - **2026-06-09** — W1.3: tighten settings validation — require kind/person/startDate/endDate/approvalStatus column mappings + non-empty kind/status label maps; surface failures in SettingsDialog and block half-configured reads with a visible error `0fbb40d`
   - _Why:_ Day-off integration plan W1.3 (frozen, user-approved 2026-06-09): a half-configured vacations board must fail loudly — never all-pending or silently-empty reads
   - _Requested:_ Execute ledger task W1.3 of DAY-OFF-INTEGRATION: tighten settings validation (today only vacationBoardId is required) and surface validation failures in the SettingsDialog
