@@ -42,6 +42,39 @@ export const REQUIRED_COLUMN_FIELDS: { key: keyof VacationColumnMap; labelKey: s
 
 const REQUIRED_STATUS_KEYS: RequestStatus[] = ['pending', 'approved', 'rejected'];
 
+/**
+ * Expected monday column type(s) per mapping field, normalized (lowercase,
+ * underscores→dashes) — covers legacy and current API type names. Drives both
+ * the type-filtered pickers in the mapping UI and the metadata-aware type
+ * validation below. Born of a real incident (change #75): workdays (numbers)
+ * mapped to the END-DATE column made every create_item fail — the numeric
+ * workdays write overwrote the end-date write on the same column id.
+ */
+export const EXPECTED_COLUMN_TYPES: Record<keyof VacationColumnMap, readonly string[]> = {
+  kindColumnId: ['color', 'status'],
+  personColumnId: ['multiple-person', 'people', 'person'],
+  startDateColumnId: ['date'],
+  endDateColumnId: ['date'],
+  workdaysColumnId: ['numbers', 'numeric'],
+  personalTypeColumnId: ['color', 'status'],
+  approvalStatusColumnId: ['color', 'status'],
+  mandatoryColumnId: ['boolean', 'checkbox'],
+  empNoteColumnId: ['long-text'],
+  mgrNoteColumnId: ['long-text'],
+  decidedByColumnId: ['multiple-person', 'people', 'person'],
+  decidedAtColumnId: ['date'],
+  fileColumnId: ['file'],
+};
+
+export function normalizeColumnType(type: string | undefined | null): string {
+  return (type ?? '').trim().toLowerCase().replace(/_/g, '-');
+}
+
+/** columnId → monday column type, as loaded from the board (dialog-side only). */
+export type BoardColumnTypeMap = Record<string, string | undefined>;
+
+const ALL_COLUMN_KEYS = Object.keys(EXPECTED_COLUMN_TYPES) as (keyof VacationColumnMap)[];
+
 function hasText(v: string | null | undefined): boolean {
   return typeof v === 'string' && v.trim() !== '';
 }
@@ -67,21 +100,58 @@ function statusMapComplete(statusValues: StatusValueMap | undefined): boolean {
  * a board with unmapped columns produced silently-empty request lists and
  * all-pending approval reads. Now every contract-critical mapping is required.
  */
-export function validateDayOffSettings(settings: DayOffSettings): SettingsValidationResult {
+export function validateDayOffSettings(
+  settings: DayOffSettings,
+  columnTypes?: BoardColumnTypeMap,
+): SettingsValidationResult {
   const errors: SettingsErrors = {};
   if (!settings.vacationBoardId) errors.vacationBoardId = 'app.notConfigured';
 
   const columns = settings.columns ?? {};
-  let anyColumnMissing = false;
+  let anyColumnIssue = false;
   for (const field of REQUIRED_COLUMN_FIELDS) {
     if (!hasText(columns[field.key])) {
       errors[`columns.${field.key}`] = 'settings.validation.columnRequired';
-      anyColumnMissing = true;
+      anyColumnIssue = true;
     }
   }
+
+  // Duplicate detection (change #75): one board column mapped by two fields
+  // means one write silently overwrites the other (the incident: workdays
+  // count clobbered the end-date). Flag EVERY field in the collision.
+  const usedBy = new Map<string, (keyof VacationColumnMap)[]>();
+  for (const key of ALL_COLUMN_KEYS) {
+    const id = columns[key];
+    if (!hasText(id)) continue;
+    const list = usedBy.get(id as string) ?? [];
+    list.push(key);
+    usedBy.set(id as string, list);
+  }
+  for (const fields of usedBy.values()) {
+    if (fields.length < 2) continue;
+    anyColumnIssue = true;
+    for (const key of fields) errors[`columns.${key}`] = 'settings.validation.columnDuplicate';
+  }
+
+  // Type check — only when board metadata is supplied (the mapping dialog has
+  // it; the boot-time validation does not and skips this block). An id absent
+  // from the map is NOT flagged here (deleted-column detection is separate).
+  if (columnTypes) {
+    for (const key of ALL_COLUMN_KEYS) {
+      const id = columns[key];
+      if (!hasText(id) || errors[`columns.${key}`]) continue;
+      const liveType = columnTypes[id as string];
+      if (liveType === undefined) continue;
+      if (!EXPECTED_COLUMN_TYPES[key].includes(normalizeColumnType(liveType))) {
+        errors[`columns.${key}`] = 'settings.validation.columnWrongType';
+        anyColumnIssue = true;
+      }
+    }
+  }
+
   // Aggregate key — keyof DayOffSettings, so the SettingsDialogShell tab dot
   // (which matches tab `fields` against error keys) can light up.
-  if (anyColumnMissing) errors.columns = 'settings.validation.columnRequired';
+  if (anyColumnIssue) errors.columns = 'settings.validation.columnRequired';
 
   if (!kindMapComplete(settings.kindValues)) errors.kindValues = 'settings.validation.kindValuesRequired';
   if (!statusMapComplete(settings.statusValues)) errors.statusValues = 'settings.validation.statusValuesRequired';

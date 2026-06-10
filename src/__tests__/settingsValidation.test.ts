@@ -188,3 +188,72 @@ describe('settingsValidationIssues — human-readable issue list', () => {
     expect(issues).toHaveLength(8);
   });
 });
+
+describe('validateDayOffSettings — duplicate column mappings (change #75)', () => {
+  it('flags every field in a collision (the incident: workdays mapped to the end-date column)', () => {
+    const s = validSettings();
+    s.columns = { ...s.columns, workdaysColumnId: s.columns.endDateColumnId };
+    const { isValid, errors } = validateDayOffSettings(s);
+    expect(isValid).toBe(false);
+    expect(errors['columns.workdaysColumnId']).toBe('settings.validation.columnDuplicate');
+    expect(errors['columns.endDateColumnId']).toBe('settings.validation.columnDuplicate');
+    expect(errors.columns).toBeTruthy(); // aggregate lights the tab dot
+  });
+
+  it('flags duplicates between optional fields too', () => {
+    const s = validSettings();
+    s.columns = { ...s.columns, empNoteColumnId: 'long_text_1', mgrNoteColumnId: 'long_text_1' };
+    const { isValid, errors } = validateDayOffSettings(s);
+    expect(isValid).toBe(false);
+    expect(errors['columns.empNoteColumnId']).toBe('settings.validation.columnDuplicate');
+    expect(errors['columns.mgrNoteColumnId']).toBe('settings.validation.columnDuplicate');
+  });
+
+  it('accepts a fully distinct mapping', () => {
+    const { isValid } = validateDayOffSettings(validSettings());
+    expect(isValid).toBe(true);
+  });
+});
+
+describe('validateDayOffSettings — column type checks with board metadata (change #75)', () => {
+  const types = {
+    status_kind: 'color',
+    people_person: 'multiple-person',
+    date_start: 'date',
+    date_end: 'date',
+    status_approval: 'color',
+  };
+
+  it('passes when every mapped column has the expected type', () => {
+    const { isValid, errors } = validateDayOffSettings(validSettings(), types);
+    expect(errors).toEqual({});
+    expect(isValid).toBe(true);
+  });
+
+  it('rejects a date field mapped to a non-date column', () => {
+    const { isValid, errors } = validateDayOffSettings(validSettings(), {
+      ...types,
+      date_end: 'numbers',
+    });
+    expect(isValid).toBe(false);
+    expect(errors['columns.endDateColumnId']).toBe('settings.validation.columnWrongType');
+  });
+
+  it('normalizes type spelling (underscores, case) before comparing', () => {
+    const { isValid } = validateDayOffSettings(validSettings(), {
+      ...types,
+      people_person: 'Multiple_Person',
+    });
+    expect(isValid).toBe(true);
+  });
+
+  it('skips the type check entirely when no metadata is supplied (boot-time path)', () => {
+    const { isValid } = validateDayOffSettings(validSettings());
+    expect(isValid).toBe(true);
+  });
+
+  it('does not flag columns missing from the metadata map (deleted-column detection is separate)', () => {
+    const { isValid } = validateDayOffSettings(validSettings(), { date_start: 'date' });
+    expect(isValid).toBe(true);
+  });
+});

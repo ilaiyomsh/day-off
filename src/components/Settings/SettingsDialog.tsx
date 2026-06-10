@@ -4,7 +4,7 @@ import { SettingsDialogShell, type SettingsTabDef, type SettingsTabRenderCtx } f
 import { useSettings, logger } from '../../core';
 import { MONDAY_STATUS_COLORS, mondayApi } from '../../services/mondayApi';
 import { PersonalTypeInUseError, isPersonalTypeLabelInUse } from '../../services/vacationService';
-import { validateDayOffSettings, REQUIRED_COLUMN_FIELDS } from '../../domain/settingsValidation';
+import { validateDayOffSettings, REQUIRED_COLUMN_FIELDS, EXPECTED_COLUMN_TYPES, normalizeColumnType } from '../../domain/settingsValidation';
 import { hasPendingLabelEdits, samePersonalTypeOptions } from './personalTypeDiff';
 import { listAllUsers } from '../../services/usersService';
 import { Icon, PeoplePicker } from '../ui';
@@ -399,7 +399,30 @@ function BoardAndMappingTab({
   const setColumn = (key: keyof VacationColumnMap, value: string | undefined) =>
     setField('columns', { ...draft.columns, [key]: value } as DayOffSettings['columns']);
 
-  const columnOptions: SelectOption[] = cols.map((c) => ({ id: c.id, name: c.title }));
+  // Type-filtered options per mapping field (change #75): a date field offers
+  // only date columns, workdays only numbers, etc. — the misconfiguration that
+  // let a numeric write clobber the end-date column is no longer selectable.
+  // Unknown type strings degrade to the full list; a wrong-typed column that is
+  // ALREADY selected stays visible (so it can be seen and fixed) and is flagged.
+  const optionsForField = (key: keyof VacationColumnMap): SelectOption[] => {
+    const allowed = EXPECTED_COLUMN_TYPES[key];
+    const typed = cols.filter((c) => allowed.includes(normalizeColumnType(c.type)));
+    const pool = typed.length ? typed : cols;
+    const selectedId = draft.columns[key];
+    const withSelected =
+      selectedId && !pool.some((c) => c.id === selectedId)
+        ? [...pool, ...cols.filter((c) => c.id === selectedId)]
+        : pool;
+    return withSelected.map((c) => ({ id: c.id, name: c.title }));
+  };
+
+  const columnTypeMismatch = (key: keyof VacationColumnMap): boolean => {
+    const id = draft.columns[key];
+    if (!id) return false;
+    const col = cols.find((c) => c.id === id);
+    if (!col) return false;
+    return !EXPECTED_COLUMN_TYPES[key].includes(normalizeColumnType(col.type));
+  };
   const personalTypeSettingsRaw = useMemo(() => {
     const col = cols.find((c) => c.id === draft.columns.personalTypeColumnId);
     if (!col) return undefined;
@@ -702,7 +725,9 @@ function BoardAndMappingTab({
         {disabled && <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.pickBoardFirst')}</small>}
         <div className="settings-columns-grid">
           {COLUMN_FIELDS.map(({ key, labelKey }) => {
-            const columnError = errors[`columns.${key}`];
+            const columnError =
+              errors[`columns.${key}`] ??
+              (columnTypeMismatch(key) ? 'settings.validation.columnWrongType' : undefined);
             return (
               <label key={key} style={{ display: 'block' }}>
                 {t(`settings.fields.${labelKey}`)}
@@ -712,7 +737,7 @@ function BoardAndMappingTab({
                   </span>
                 )}
                 <SearchableSelect
-                  options={columnOptions}
+                  options={optionsForField(key)}
                   value={draft.columns[key] ?? ''}
                   disabled={disabled}
                   placeholder={t('settings.selectColumn')}

@@ -368,7 +368,9 @@
       "columnRequired": "This column must be mapped",
       "columnMissing": "The \"{{field}}\" column is not mapped",
       "kindValuesRequired": "Pick the general/personal labels of the kind column",
-      "statusValuesRequired": "Pick the approval-status labels (pending / approved / rejected)"
+      "statusValuesRequired": "Pick the approval-status labels (pending / approved / rejected)",
+      "columnDuplicate": "The same board column is mapped to more than one field — each field needs its own column",
+      "columnWrongType": "The selected column's type does not fit this field"
     },
     "tabs": {
       "general": "General",
