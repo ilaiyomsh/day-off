@@ -425,7 +425,6 @@
     "typeValues": {
       "title": "Type value mapping",
       "help": "The board status-column label for each absence type.",
-      "consumerWarning": "Heads up: external apps (Planner, Tracker) cache this column's label IDs in their own settings. Changing, adding, or removing labels may require re-mapping the board in those apps after saving.",
       "vacation": "Vacation value",
       "sick": "Sick value",
       "reserves": "Reserves value"
@@ -435,7 +434,8 @@
       "help": "The board status-column label for each request state.",
       "pending": "Pending",
       "approved": "Approved",
-      "rejected": "Rejected"
+      "rejected": "Rejected",
+      "consumerWarning": "Note: external apps (Planner, Tracker) map the approval-status labels (especially 'approved') in their own settings. Changing the selection here requires a matching re-mapping there after saving."
     },
     "team": {
       "title": "Teams & managers",
@@ -497,7 +497,8 @@
       "title": "General/personal values",
       "help": "The status label separating a general day from a personal one.",
       "general": "General",
-      "personal": "Personal"
+      "personal": "Personal",
+      "consumerWarning": "Note: external apps (Planner, Tracker) map this column's general/personal labels in their own settings. Changing the selection here requires a matching re-mapping there after saving."
     },
     "newStatusLabel": "New label",
     "addStatusLabel": "Add label",

@@ -5,7 +5,7 @@ import { useSettings, logger } from '../../core';
 import { MONDAY_STATUS_COLORS, mondayApi } from '../../services/mondayApi';
 import { PersonalTypeInUseError, isPersonalTypeLabelInUse } from '../../services/vacationService';
 import { validateDayOffSettings, REQUIRED_COLUMN_FIELDS, EXPECTED_COLUMN_TYPES, normalizeColumnType } from '../../domain/settingsValidation';
-import { hasPendingLabelEdits, samePersonalTypeOptions } from './personalTypeDiff';
+import { kindSelectionDiverged, approvalSelectionDiverged, samePersonalTypeOptions } from './personalTypeDiff';
 import { listAllUsers } from '../../services/usersService';
 import { Icon, PeoplePicker } from '../ui';
 import { CompanyDaysTab } from './CompanyDaysTab';
@@ -305,6 +305,7 @@ export function SettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: 
       render: (ctx: SettingsTabRenderCtx<DayOffSettings>) => (
         <BoardAndMappingTab
           ctx={ctx}
+          savedSettings={settings}
           boardOptions={boards}
           boardsLoading={loading}
           isOpen={isOpen}
@@ -366,6 +367,7 @@ export function SettingsDialog({ isOpen, onClose }: { isOpen: boolean; onClose: 
 /** Mapping tab — column dropdowns + kind/type/status value maps for the one board. */
 function BoardAndMappingTab({
   ctx,
+  savedSettings,
   boardOptions,
   boardsLoading,
   isOpen,
@@ -373,6 +375,7 @@ function BoardAndMappingTab({
   setPersonalTypeError,
 }: {
   ctx: SettingsTabRenderCtx<DayOffSettings>;
+  savedSettings: DayOffSettings;
   boardOptions: MondayBoardOption[];
   boardsLoading: boolean;
   isOpen: boolean;
@@ -448,7 +451,6 @@ function BoardAndMappingTab({
   const [approvalStatusOptions, setApprovalStatusOptions] = useState<StatusLabelOption[]>([]);
   // Last-known LIVE board labels — the baseline for the W1.5 consumer warning
   // (null until the snapshot loads / after a failed load → no warning shown).
-  const [livePersonalTypes, setLivePersonalTypes] = useState<PersonalTypeOption[] | null>(null);
   const personalTypes = useMemo(() => {
     const draftList = draft.personalTypes ?? [];
     if (!draftList.length) return detectedPersonalTypes;
@@ -459,15 +461,13 @@ function BoardAndMappingTab({
     }));
   }, [detectedPersonalTypes, draft.personalTypes]);
   const personalTypeColorChoices = useMemo(() => collectStatusColorChoices(personalTypes), [personalTypes]);
-  // W1.5: warn before save when the draft labels diverge from the live board
-  // labels — external consumers (Planner, tracker) cache this column's label
-  // IDs in their own settings, so a label rewrite may require re-mapping there.
-  const showConsumerLabelWarning =
-    Boolean(draft.vacationBoardId) &&
-    !personalTypesLoading &&
-    Boolean(draft.columns.personalTypeColumnId) &&
-    isStatusColumnType(personalTypeColumn?.type) &&
-    hasPendingLabelEdits(personalTypes, livePersonalTypes);
+  // W1.5 (relocated by change #78): consumers cache the KIND and APPROVAL
+  // label IDs — not the personal-type ones (open set per D1, read live,
+  // display-only). Warn when the draft SELECTION diverges from what is saved:
+  // a semantic re-pick silently breaks Planner/tracker filtering until they
+  // re-map.
+  const showKindConsumerWarning = kindSelectionDiverged(savedSettings.kindValues, draft.kindValues);
+  const showApprovalConsumerWarning = approvalSelectionDiverged(savedSettings.statusValues, draft.statusValues);
 
   const setPersonalTypeLabel = (id: string, title: string) => {
     const next = personalTypes.map((opt) => (opt.id === id ? { ...opt, title } : opt));
@@ -589,13 +589,11 @@ function BoardAndMappingTab({
       .then((snapshot) => {
         if (cancelled) return;
         setField('personalTypes', snapshot as DayOffSettings['personalTypes']);
-        setLivePersonalTypes(snapshot);
       })
       .catch((err) => {
         logger.error('SettingsDialog', 'failed to sync personal-type labels', { boardId, columnId, err });
         if (cancelled) return;
         setField('personalTypes', [] as DayOffSettings['personalTypes']);
-        setLivePersonalTypes(null);
       })
       .finally(() => {
         if (loadGen === personalTypesLoadGen.current) setPersonalTypesLoading(false);
@@ -759,6 +757,12 @@ function BoardAndMappingTab({
       <section style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.kindValues.title')}</h3>
         <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.kindValues.help')}</small>
+        {showKindConsumerWarning && (
+          <div className="warn-box" role="alert">
+            <Icon name="alert" size={16} />
+            <span>{t('settings.kindValues.consumerWarning')}</span>
+          </div>
+        )}
         {errors.kindValues && (
           <small style={{ color: 'var(--color-danger)', display: 'block' }}>{t(errors.kindValues)}</small>
         )}
@@ -811,12 +815,6 @@ function BoardAndMappingTab({
         {personalTypeError ? (
           <small style={{ color: 'var(--color-danger)', display: 'block' }}>{personalTypeError}</small>
         ) : null}
-        {showConsumerLabelWarning && (
-          <div className="warn-box" role="alert">
-            <Icon name="alert" size={16} />
-            <span>{t('settings.typeValues.consumerWarning')}</span>
-          </div>
-        )}
         {!draft.vacationBoardId ? (
           <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.pickBoardFirst')}</small>
         ) : personalTypesLoading ? (
@@ -905,6 +903,12 @@ function BoardAndMappingTab({
       <section style={{ display: 'grid', gap: 10 }}>
         <h3 style={{ margin: 0, fontSize: 15 }}>{t('settings.statusValues.title')}</h3>
         <small style={{ color: 'var(--color-text-secondary)' }}>{t('settings.statusValues.help')}</small>
+        {showApprovalConsumerWarning && (
+          <div className="warn-box" role="alert">
+            <Icon name="alert" size={16} />
+            <span>{t('settings.statusValues.consumerWarning')}</span>
+          </div>
+        )}
         {errors.statusValues && (
           <small style={{ color: 'var(--color-danger)', display: 'block' }}>{t(errors.statusValues)}</small>
         )}

@@ -1,4 +1,4 @@
-import type { PersonalTypeOption } from '../../types';
+import type { PersonalTypeOption, KindValueMap, StatusValueMap } from '../../types';
 
 /**
  * Pure comparison helpers for the personal-type label editor (SettingsDialog).
@@ -29,9 +29,32 @@ export function samePersonalTypeOptions(a: PersonalTypeOption[], b: PersonalType
  * load failed) yields `false`: without a trusted baseline there is nothing to
  * warn about.
  */
-export function hasPendingLabelEdits(
-  draft: PersonalTypeOption[],
-  liveBaseline: PersonalTypeOption[] | null,
+/**
+ * True when a SAVED kind label selection differs from the draft's (a semantic
+ * re-pick). Planner/tracker cache these label IDs in their own settings —
+ * re-picking which label means general/personal requires re-mapping there
+ * (change #78). A field with no saved ID (first-time mapping, or a legacy
+ * text-only blob) never warns.
+ */
+export function kindSelectionDiverged(
+  saved: KindValueMap | undefined,
+  draft: KindValueMap | undefined,
 ): boolean {
-  return liveBaseline != null && !samePersonalTypeOptions(draft, liveBaseline);
+  const keys = ['generalLabelId', 'personalLabelId'] as const;
+  return keys.some((k) => {
+    const savedId = saved?.[k];
+    return !!savedId && (draft?.[k] ?? '') !== savedId;
+  });
+}
+
+/** Same contract as kindSelectionDiverged, for the approval-status label IDs. */
+export function approvalSelectionDiverged(
+  saved: StatusValueMap | undefined,
+  draft: StatusValueMap | undefined,
+): boolean {
+  const keys = ['pending', 'approved', 'rejected'] as const;
+  return keys.some((k) => {
+    const savedId = saved?.labelIds?.[k];
+    return !!savedId && (draft?.labelIds?.[k] ?? '') !== savedId;
+  });
 }
